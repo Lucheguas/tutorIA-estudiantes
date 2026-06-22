@@ -98,7 +98,7 @@ export default function Chat() {
           <div className="text-xs text-stone-400">Score: {score}/100</div>
           {messages.length > 0 && (
             <button
-              onClick={() => { setMessages([]); directSessionId.current = null }}
+              onClick={() => setMessages([])}
               className="flex items-center gap-1 text-xs text-stone-400 hover:text-red-400 transition mt-1"
             >
               <Trash2 className="w-3 h-3" /> Limpiar
