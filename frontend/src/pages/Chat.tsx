@@ -80,7 +80,7 @@ export default function Chat() {
       <div className="flex items-start justify-between flex-shrink-0 gap-3">
         <div>
           <h1 className="text-lg sm:text-2xl font-bold text-stone-900 flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-orange-500" /> Tutor IA
+            <MessageSquare className="w-5 h-5 text-orange-500" /> E-Tutor UNFV
           </h1>
           <p className="text-stone-500 text-xs sm:text-sm mt-0.5">Método socrático · Te guío con preguntas</p>
           <a
