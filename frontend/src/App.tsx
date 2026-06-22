@@ -10,7 +10,6 @@ import LearningPath from './pages/LearningPath'
 import Resources from './pages/Resources'
 import Chat from './pages/Chat'
 import StudyMethods from './pages/StudyMethods'
-import Notifications from './pages/Notifications'
 import Sidebar from './components/layout/Sidebar'
 
 function AppRoutes() {
@@ -77,7 +76,6 @@ function AppRoutes() {
             <Route path="/recursos" element={<Resources />} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/metodos" element={<StudyMethods />} />
-            <Route path="/notificaciones" element={<Notifications />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>

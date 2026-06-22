@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Calendar, GitBranch,
-  FolderOpen, Brain, MessageSquare, Bell, LogOut, BookOpen, X
+  FolderOpen, Brain, MessageSquare,  LogOut, BookOpen, X
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
@@ -14,7 +14,6 @@ const links = [
   { to: '/recursos',       icon: FolderOpen,       label: 'Recursos' },
   { to: '/chat',           icon: MessageSquare,    label: 'Tutor IA' },
   { to: '/metodos',        icon: Brain,            label: 'Métodos de Estudio' },
-  { to: '/notificaciones', icon: Bell,             label: 'Notificaciones' },
 ]
 
 interface SidebarProps {
