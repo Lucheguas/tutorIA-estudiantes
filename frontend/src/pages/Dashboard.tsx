@@ -1,75 +1,177 @@
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
+import { supabase } from '../lib/supabase'
+import { apiPost } from '../lib/apiClient'
 import { useAuth } from '../context/AuthContext'
+import type { StudentCourse, Attendance } from '../types'
 import {
-  TrendingUp, AlertTriangle, User, Calendar,
-  BookOpen, CheckCircle, XCircle, Award
+  TrendingUp, TrendingDown, Award, BookOpen, AlertTriangle,
+  User, Calendar, Star, Activity, ShieldAlert, Loader2
 } from 'lucide-react'
+import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer } from 'recharts'
 
-const TOTAL_SESIONES = 16
+const CURRENT_WEEK = 12 // can be dynamic
 
-function StatCard({ icon: Icon, label, value, sub, color = 'orange' }: {
-  icon: React.ElementType; label: string; value: string | number; sub?: string; color?: string
+type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+
+interface RiskAnalysis {
+  level?: RiskLevel
+  risk_level?: RiskLevel
+  message?: string
+  recommendation?: string
+  summary?: string
+}
+
+const riskColors: Record<RiskLevel, string> = {
+  LOW: 'text-green-400 border-green-500/30 bg-green-500/10',
+  MEDIUM: 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10',
+  HIGH: 'text-orange-400 border-orange-500/30 bg-orange-500/10',
+  CRITICAL: 'text-red-400 border-red-500/30 bg-red-500/10',
+}
+
+const riskLabels: Record<RiskLevel, string> = {
+  LOW: 'Bajo',
+  MEDIUM: 'Medio',
+  HIGH: 'Alto',
+  CRITICAL: 'Crítico',
+}
+
+function StatCard({ icon: Icon, label, value, sub, color = 'orange', glow = false }: {
+  icon: React.ElementType; label: string; value: string | number; sub?: string; color?: string; glow?: boolean
 }) {
-  const palette: Record<string, string> = {
+  const colors: Record<string, string> = {
     orange: 'from-orange-500/20 to-orange-600/10 border-orange-500/30 text-orange-400',
-    green:  'from-green-500/20  to-green-600/10  border-green-500/30  text-green-400',
-    red:    'from-red-500/20    to-red-600/10    border-red-500/30    text-red-400',
-    blue:   'from-blue-500/20   to-blue-600/10   border-blue-500/30   text-blue-400',
-    yellow: 'from-yellow-500/20 to-yellow-600/10 border-yellow-500/30 text-yellow-400',
+    green: 'from-green-500/20 to-green-600/10 border-green-500/30 text-green-400',
+    red: 'from-red-500/20 to-red-600/10 border-red-500/30 text-red-400',
+    blue: 'from-blue-500/20 to-blue-600/10 border-blue-500/30 text-blue-400',
   }
-  const cls = palette[color] ?? palette.orange
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`bg-gradient-to-br ${cls} border rounded-2xl p-4`}
+      className={`bg-gradient-to-br ${colors[color]} border rounded-2xl p-5 ${glow ? 'glow' : ''}`}
     >
-      <Icon className={`w-4 h-4 mb-2 ${cls.split(' ').pop()}`} />
-      <div className="text-2xl font-bold text-white">{value}</div>
-      <div className="text-xs text-gray-400 mt-0.5">{label}</div>
-      {sub && <div className="text-xs text-gray-500 mt-0.5">{sub}</div>}
+      <div className="flex items-start justify-between mb-3">
+        <Icon className={`w-5 h-5 ${colors[color].split(' ').pop()}`} />
+      </div>
+      <div className="text-2xl font-bold text-white mb-1">{value}</div>
+      <div className="text-sm text-gray-400">{label}</div>
+      {sub && <div className="text-xs text-gray-500 mt-1">{sub}</div>}
     </motion.div>
   )
 }
 
-const riesgoConfig = {
-  ROJO:       { label: 'Riesgo alto',   color: 'text-red-300',    bg: 'bg-red-500/10 border-red-500/40' },
-  ROJO_FALTAS:{ label: 'Riesgo faltas', color: 'text-red-300',    bg: 'bg-red-500/10 border-red-500/40' },
-  AMBAR:      { label: 'Atención',      color: 'text-yellow-300', bg: 'bg-yellow-500/10 border-yellow-500/40' },
-  VERDE:      { label: 'Al día',        color: 'text-green-300',  bg: 'bg-green-500/10 border-green-500/40' },
-  PENDIENTE:  { label: 'Sin calificar', color: 'text-gray-300',   bg: 'bg-gray-500/10 border-gray-500/40' },
-}
-
 export default function Dashboard() {
   const { profile } = useAuth()
-  if (!profile) return null
+  const [courses, setCourses] = useState<StudentCourse[]>([])
+  const [attendance, setAttendance] = useState<Attendance[]>([])
+  const [loading, setLoading] = useState(true)
+  const [riskAnalysis, setRiskAnalysis] = useState<RiskAnalysis | null>(null)
+  const [riskLoading, setRiskLoading] = useState(false)
 
-  const sesiones = profile.sesiones ?? []
-  const registradas = sesiones.length
-  const pct = registradas > 0 ? Math.round(profile.presentes / registradas * 100) : 0
-  const riesgo = riesgoConfig[profile.riesgo]
-  const primerNombre = profile.nombre.split(' ').slice(2, 4).join(' ') ||
-                       profile.nombre.split(' ')[0]
+  useEffect(() => {
+    if (!profile) return
+    Promise.all([loadCourses(), loadAttendance()]).finally(() => setLoading(false))
+  }, [profile])
+
+  // Fetch AI risk analysis after attendance is loaded
+  useEffect(() => {
+    if (!profile || attendance.length === 0) return
+    setRiskLoading(true)
+    apiPost<RiskAnalysis>('/ai/risk/analyze', {
+      studentId: profile.id,
+      career: profile.career,
+      cycle: profile.cycle,
+      learning_style: profile.learning_style,
+      academic_performance: profile.academic_performance,
+      weekly_study_hours: profile.weekly_study_hours,
+      attendance_count: attendance.length,
+      absences: attendance.filter(a => !a.present).length,
+    })
+      .then(data => setRiskAnalysis(data))
+      .catch(() => {
+        // Non-fatal: just don't show the AI risk card
+        setRiskAnalysis(null)
+      })
+      .finally(() => setRiskLoading(false))
+  }, [profile, attendance])
+
+  async function loadCourses() {
+    if (!profile) return
+    const { data } = await supabase
+      .from('student_courses')
+      .select('*, course:courses(*)')
+      .eq('student_id', profile.id)
+      .eq('cycle', profile.cycle)
+    setCourses(data ?? [])
+  }
+
+  async function loadAttendance() {
+    if (!profile) return
+    const { data } = await supabase
+      .from('attendance')
+      .select('*')
+      .eq('student_id', profile.id)
+    setAttendance(data ?? [])
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  const grades = courses.filter(c => c.grade !== null).map(c => c.grade as number)
+  const highestGrade = grades.length ? Math.max(...grades) : 0
+  const lowestGrade = grades.length ? Math.min(...grades) : 0
+  const totalCredits = courses.filter(c => c.grade !== null && c.grade >= 11)
+    .reduce((acc, c) => acc + (c.course?.credits ?? 0), 0)
+
+  // Attendance risk per course
+  const courseRisk = courses.map(sc => {
+    const courseAttendance = attendance.filter(a => a.course_id === sc.course_id)
+    const absences = courseAttendance.filter(a => !a.present).length
+    const totalClasses = CURRENT_WEEK
+    const absenceRate = totalClasses > 0 ? absences / totalClasses : 0
+    return { ...sc, absences, absenceRate, atRisk: absenceRate >= 0.3 }
+  })
+
+  const atRiskCourses = courseRisk.filter(c => c.atRisk)
+
+  const radarData = courses.slice(0, 6).map(c => ({
+    subject: c.course?.name?.slice(0, 12) ?? '',
+    nota: c.grade ?? 0,
+  }))
+
+  const xpForNextLevel = profile!.level * 500
+
+  // Resolve risk level from API response
+  const resolvedLevel: RiskLevel | null = riskAnalysis
+    ? (riskAnalysis.level ?? riskAnalysis.risk_level ?? null)
+    : null
+  const riskMessage = riskAnalysis?.message ?? riskAnalysis?.recommendation ?? riskAnalysis?.summary ?? null
 
   return (
-    <div className="p-4 sm:p-6 space-y-5">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white">
-            Hola, {primerNombre}
+          <h1 className="text-2xl font-bold text-white">
+            Hola, {profile?.full_name?.split(' ')[0]} 👋
           </h1>
-          <p className="text-gray-400 text-sm mt-0.5">
-            Base de Datos II · Sección {profile.seccion}
-          </p>
+          <p className="text-gray-400 mt-1">{profile?.career} · {profile?.cycle}° ciclo</p>
         </div>
-        <div className={`text-center px-3 py-2 rounded-xl border text-xs font-medium ${riesgo.bg} ${riesgo.color}`}>
-          {riesgo.label}
+        <div className="text-right">
+          <div className="text-sm text-gray-400">Semana actual</div>
+          <div className="text-3xl font-bold text-orange-400">{CURRENT_WEEK}</div>
+          <div className="text-xs text-gray-500">de 16</div>
         </div>
       </div>
 
-      {/* Alert si riesgo */}
-      {(profile.riesgo === 'ROJO' || profile.riesgo === 'ROJO_FALTAS') && (
+      {/* Risk Alert (attendance-based) */}
+      {atRiskCourses.length > 0 && (
         <motion.div
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -77,124 +179,150 @@ export default function Dashboard() {
         >
           <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-red-300 font-medium text-sm">Riesgo académico detectado</p>
-            <p className="text-red-400/70 text-xs mt-0.5">
-              {profile.riesgo === 'ROJO_FALTAS'
-                ? `Tienes ${profile.faltas} falta(s). Si superas 5 puedes ser retirado del curso.`
-                : `Promedio ${profile.promedio ?? '--'} con ${profile.faltas} falta(s). Contacta a tu tutor.`}
+            <p className="text-red-300 font-medium">⚠️ Riesgo académico detectado</p>
+            <p className="text-red-400/70 text-sm mt-0.5">
+              {atRiskCourses.map(c => c.course?.name).join(', ')} — supera 33% de inasistencias.
+              Tu tutor ha sido notificado.
             </p>
           </div>
         </motion.div>
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard
-          icon={TrendingUp}
-          label="Promedio"
-          value={profile.promedio !== null ? profile.promedio.toFixed(1) : '--'}
-          color={profile.promedio === null ? 'blue' : profile.promedio >= 13 ? 'green' : profile.promedio >= 11 ? 'yellow' : 'red'}
-        />
-        <StatCard
-          icon={CheckCircle}
-          label="Asistencias"
-          value={profile.presentes}
-          sub={`${pct}% del total`}
-          color="green"
-        />
-        <StatCard
-          icon={XCircle}
-          label="Faltas"
-          value={profile.faltas}
-          sub={`de ${registradas} sesiones`}
-          color={profile.faltas >= 5 ? 'red' : profile.faltas >= 3 ? 'yellow' : 'orange'}
-        />
-        <StatCard
-          icon={BookOpen}
-          label="Sesiones reg."
-          value={`${registradas}/${TOTAL_SESIONES}`}
-          color="blue"
-        />
+      {/* AI Risk Evaluation */}
+      <div className="glass rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <ShieldAlert className="w-5 h-5 text-orange-500" />
+          <span className="text-white font-semibold">Evaluación de riesgo IA</span>
+          <span className="text-xs text-gray-500 ml-auto">por Llama 3</span>
+        </div>
+
+        {riskLoading && (
+          <div className="flex items-center gap-2 text-gray-400 text-sm">
+            <Loader2 className="w-4 h-4 animate-spin text-orange-400" />
+            Analizando tu situación académica...
+          </div>
+        )}
+
+        {!riskLoading && resolvedLevel && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className={`rounded-xl border px-4 py-3 ${riskColors[resolvedLevel]}`}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-bold text-lg">{riskLabels[resolvedLevel]}</span>
+              <span className="text-xs opacity-70">nivel de riesgo</span>
+            </div>
+            {riskMessage && <p className="text-sm opacity-80">{riskMessage}</p>}
+          </motion.div>
+        )}
+
+        {!riskLoading && !resolvedLevel && !riskAnalysis && (
+          <p className="text-gray-500 text-sm">No se pudo obtener la evaluación. Intenta de nuevo más tarde.</p>
+        )}
       </div>
 
-      {/* Notas breakdown */}
+      {/* Stats grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard icon={Calendar} label="Semana actual" value={`${CURRENT_WEEK}/16`} color="orange" glow />
+        <StatCard icon={BookOpen} label="Créditos aprobados" value={totalCredits} sub="este ciclo" color="green" />
+        <StatCard icon={TrendingUp} label="Nota más alta" value={highestGrade} color="blue" />
+        <StatCard icon={TrendingDown} label="Nota más baja" value={lowestGrade} color={lowestGrade < 11 ? 'red' : 'orange'} />
+      </div>
+
+      {/* XP Progress */}
       <div className="glass rounded-2xl p-5">
-        <h3 className="text-white font-semibold mb-4 flex items-center gap-2 text-sm">
-          <Award className="w-4 h-4 text-orange-500" /> Notas · Base de Datos II
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { label: 'Parcial',  val: profile.parcial  },
-            { label: 'Final',    val: profile.final    },
-            { label: 'Práctica', val: profile.practica },
-            { label: 'Promedio', val: profile.promedio },
-          ].map(({ label, val }) => {
-            const num = val ?? null
-            const color = num === null ? 'text-gray-500' : num >= 14 ? 'text-green-400' : num >= 11 ? 'text-yellow-400' : 'text-red-400'
-            return (
-              <div key={label} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-3 text-center">
-                <div className={`text-xl font-bold ${color}`}>{num !== null ? num : '—'}</div>
-                <div className="text-xs text-gray-500 mt-0.5">{label}</div>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Award className="w-5 h-5 text-orange-500" />
+            <span className="text-white font-medium">Nivel {profile?.level}</span>
+          </div>
+          <span className="text-sm text-gray-400">{profile?.xp} / {xpForNextLevel} XP</span>
+        </div>
+        <div className="h-2 bg-[#2a2a2a] rounded-full overflow-hidden">
+          <motion.div
+            className="h-full bg-gradient-to-r from-orange-600 to-orange-400 rounded-full"
+            initial={{ width: 0 }}
+            animate={{ width: `${Math.min(((profile?.xp ?? 0) % xpForNextLevel) / xpForNextLevel * 100, 100)}%` }}
+            transition={{ duration: 1, delay: 0.3 }}
+          />
+        </div>
+        <div className="flex items-center gap-4 mt-3 text-sm text-gray-400">
+          <span>🔥 {profile?.streak} días de racha</span>
+          <span>⭐ {profile?.xp} XP total</span>
+        </div>
+      </div>
+
+      {/* Two column */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Courses list */}
+        <div className="glass rounded-2xl p-5">
+          <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+            <Activity className="w-4 h-4 text-orange-500" /> Cursos del ciclo
+          </h3>
+          <div className="space-y-3">
+            {courses.length === 0 && <p className="text-gray-500 text-sm">No hay cursos registrados.</p>}
+            {courseRisk.map(c => (
+              <div key={c.id} className="flex items-center justify-between py-2 border-b border-[#222] last:border-0">
+                <div>
+                  <p className="text-white text-sm">{c.course?.name}</p>
+                  <p className="text-gray-500 text-xs">{c.course?.credits} créditos</p>
+                </div>
+                <div className="text-right">
+                  <p className={`text-sm font-semibold ${
+                    c.grade === null ? 'text-gray-500' :
+                    c.grade >= 14 ? 'text-green-400' :
+                    c.grade >= 11 ? 'text-yellow-400' : 'text-red-400'
+                  }`}>
+                    {c.grade ?? '--'}
+                  </p>
+                  {c.atRisk && (
+                    <span className="text-xs bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded-md">
+                      Riesgo
+                    </span>
+                  )}
+                </div>
               </div>
-            )
-          })}
+            ))}
+          </div>
         </div>
+
+        {/* Radar chart */}
+        {radarData.length > 2 && (
+          <div className="glass rounded-2xl p-5">
+            <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+              <Star className="w-4 h-4 text-orange-500" /> Rendimiento por curso
+            </h3>
+            <ResponsiveContainer width="100%" height={220}>
+              <RadarChart data={radarData}>
+                <PolarGrid stroke="#2a2a2a" />
+                <PolarAngleAxis dataKey="subject" tick={{ fill: '#6b7280', fontSize: 11 }} />
+                <Radar dataKey="nota" stroke="#f97316" fill="#f97316" fillOpacity={0.25} />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
 
-      {/* Attendance mini grid */}
+      {/* Student info */}
       <div className="glass rounded-2xl p-5">
-        <h3 className="text-white font-semibold mb-4 flex items-center gap-2 text-sm">
-          <Calendar className="w-4 h-4 text-orange-500" /> Registro de sesiones
-        </h3>
-        <div className="grid grid-cols-8 sm:grid-cols-16 gap-2">
-          {Array.from({ length: TOTAL_SESIONES }, (_, i) => i + 1).map(s => {
-            const reg = sesiones.find(x => x.sesion === s)
-            const state = !reg ? 'pending' : reg.presente ? 'present' : 'absent'
-            return (
-              <div
-                key={s}
-                title={`Sesión ${s}: ${state === 'present' ? 'Asistió' : state === 'absent' ? 'Faltó' : 'Sin registro'}`}
-                className={`aspect-square rounded-lg flex flex-col items-center justify-center text-[10px] font-medium border transition-all ${
-                  state === 'present' ? 'bg-green-500/20 border-green-500/40 text-green-400' :
-                  state === 'absent'  ? 'bg-red-500/20   border-red-500/40   text-red-400' :
-                  'bg-[#1a1a1a] border-[#2a2a2a] text-gray-600'
-                }`}
-              >
-                {s}
-              </div>
-            )
-          })}
-        </div>
-        <div className="flex items-center gap-4 mt-4 text-xs text-gray-500">
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded bg-green-500/50" /> Asistió
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded bg-red-500/50" /> Faltó
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded bg-[#2a2a2a]" /> Sin registro
-          </span>
-        </div>
-      </div>
-
-      {/* Datos personales */}
-      <div className="glass rounded-2xl p-5">
-        <h3 className="text-white font-semibold mb-4 flex items-center gap-2 text-sm">
+        <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
           <User className="w-4 h-4 text-orange-500" /> Datos personales
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           {[
-            { label: 'Nombre',   value: profile.nombre },
-            { label: 'Código',   value: profile.codigo },
-            { label: 'Sección',  value: profile.seccion },
-            { label: 'Grupo',    value: profile.grupo || '—' },
-            { label: 'Correo',   value: `${profile.codigo}@unfv.edu.pe` },
-            { label: 'Curso',    value: 'Base de Datos II' },
+            { label: 'Nombre', value: profile?.full_name },
+            { label: 'Carrera', value: profile?.career },
+            { label: 'Ciclo', value: `${profile?.cycle}°` },
+            { label: 'Correo', value: profile?.email },
+            { label: 'Rendimiento previo', value: profile?.academic_performance },
+            { label: 'Horas de estudio', value: profile?.weekly_study_hours },
+            { label: 'Situación laboral', value: profile?.work_situation },
+            { label: 'Estilo de aprendizaje', value: profile?.learning_style },
           ].map(({ label, value }) => (
             <div key={label}>
-              <p className="text-gray-500 text-xs">{label}</p>
-              <p className="text-white mt-0.5 text-sm break-words">{value}</p>
+              <p className="text-gray-500">{label}</p>
+              <p className="text-white mt-0.5 font-medium">{value ?? '—'}</p>
             </div>
           ))}
         </div>
