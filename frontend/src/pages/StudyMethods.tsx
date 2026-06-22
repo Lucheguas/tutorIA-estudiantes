@@ -1,6 +1,8 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Brain, Clock, Timer, Zap, BookOpen, Layers, ChevronDown, Play, Pause, RotateCcw } from 'lucide-react'
+import { Brain, Clock, Timer, Zap, BookOpen, Layers, ChevronDown, Play, Pause, RotateCcw, Sparkles, Loader2 } from 'lucide-react'
+import { apiGet } from '../lib/apiClient'
+import { useAuth } from '../context/AuthContext'
 
 const methods = [
   {
@@ -167,17 +169,83 @@ function PomodoroTimer() {
   )
 }
 
+interface AiRecommendation {
+  method?: string
+  reason?: string
+  recommendation?: string
+  technique?: string
+}
+
+function AiRecommendationCard() {
+  const { profile } = useAuth()
+  const [rec, setRec] = useState<AiRecommendation | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    if (!profile) return
+    setLoading(true)
+    setError(false)
+
+    const params = new URLSearchParams({
+      learning_style: profile.learning_style ?? '',
+      career: profile.career ?? '',
+      cycle: String(profile.cycle ?? 1),
+      academic_performance: profile.academic_performance ?? '',
+      weekly_study_hours: profile.weekly_study_hours ?? '',
+    })
+
+    apiGet<AiRecommendation>(`/ai/recommend?${params.toString()}`)
+      .then(data => setRec(data))
+      .catch(() => setError(true))
+      .finally(() => setLoading(false))
+  }, [profile])
+
+  if (loading) {
+    return (
+      <div className="glass rounded-2xl p-5 flex items-center gap-3">
+        <Loader2 className="w-5 h-5 text-orange-400 animate-spin flex-shrink-0" />
+        <span className="text-gray-400 text-sm">Llama 3 analizando tu perfil...</span>
+      </div>
+    )
+  }
+
+  if (error || !rec) return null
+
+  const methodName = rec.method ?? rec.technique ?? 'Técnica personalizada'
+  const reason = rec.reason ?? rec.recommendation ?? ''
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="glass rounded-2xl p-5 border border-orange-500/20"
+    >
+      <div className="flex items-center gap-2 mb-3">
+        <Sparkles className="w-4 h-4 text-orange-400" />
+        <span className="text-white font-semibold text-sm">Recomendación de Llama 3 para ti</span>
+      </div>
+      <p className="text-orange-300 font-medium">{methodName}</p>
+      {reason && <p className="text-gray-400 text-sm mt-1">{reason}</p>}
+      <p className="text-xs text-gray-600 mt-2">Basado en tu estilo de aprendizaje: {profile?.learning_style}</p>
+    </motion.div>
+  )
+}
+
 export default function StudyMethods() {
   const [expanded, setExpanded] = useState<string | null>(null)
 
   return (
-    <div className="p-4 sm:p-6 space-y-5">
+    <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           <Brain className="w-6 h-6 text-orange-500" /> Métodos de Estudio
         </h1>
         <p className="text-gray-400 mt-1">Técnicas probadas para aprender de forma eficiente</p>
       </div>
+
+      {/* AI Recommendation from Llama */}
+      <AiRecommendationCard />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {methods.map((method, idx) => {

@@ -1,8 +1,13 @@
 import { Router, Request, Response } from 'express'
-import Anthropic from '@anthropic-ai/sdk'
 
 const router = Router()
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+// ponytail: read lazily so dotenv has time to load
+const getApiUrl = () => process.env.API_URL ?? 'https://llm.mystic-byte.com/api/v1'
+const getApiKey = () => process.env.API_KEY ?? 'etutor-dev-key-2026'
+
+// In-memory session store: studentId -> sessionId
+const sessionMap = new Map<string, string>()
 
 interface StudentProfile {
   name: string
@@ -13,38 +18,49 @@ interface StudentProfile {
   level: number
 }
 
-function buildSystemPrompt(profile: StudentProfile, score: number, courseId: string | null): string {
+function buildTopic(profile: StudentProfile, score: number, courseId: string | null): string {
   const difficulty = score < 30 ? 'básico' : score < 60 ? 'intermedio' : score < 85 ? 'avanzado' : 'experto'
 
-  return `Eres un tutor socrático de la plataforma TutorIA para la universidad.
+  return `Tutor socrático para ${profile.name} (${profile.career}, ciclo ${profile.cycle}).
+Estilo: ${profile.learning_style}. Comodidad: ${profile.comfort_level}. Nivel plataforma: ${profile.level}. Score: ${score}/100 → ${difficulty}.
+${courseId ? 'Contexto: consulta sobre curso seleccionado.' : 'Contexto: consulta general.'}
+INSTRUCCIONES: Nunca des la respuesta directamente. Guía con preguntas socráticas. Ajusta complejidad al nivel ${difficulty}. Máx 3-4 preguntas por respuesta. En español peruano natural. Sé cálido y motivador.`
+}
 
-ESTUDIANTE:
-- Nombre: ${profile.name}
-- Carrera: ${profile.career}
-- Ciclo: ${profile.cycle}°
-- Estilo de aprendizaje: ${profile.learning_style}
-- Comodidad con los cursos: ${profile.comfort_level}
-- Nivel en la plataforma: ${profile.level}
-- Score actual: ${score}/100 → Nivel de dificultad: ${difficulty}
+async function getOrCreateSession(
+  studentId: string,
+  courseId: string | null,
+  topic: string
+): Promise<string> {
+  const existing = sessionMap.get(studentId)
+  if (existing) return existing
 
-${courseId ? `Contexto: El estudiante está preguntando sobre el curso seleccionado.` : 'Contexto: Consulta general.'}
+  const res = await fetch(`${getApiUrl()}/chat/sessions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': getApiKey(),
+    },
+    body: JSON.stringify({
+      studentId,
+      courseId: courseId ?? undefined,
+      topic,
+    }),
+  })
 
-INSTRUCCIONES SOCRÁTICAS OBLIGATORIAS:
-1. NUNCA des la respuesta directamente. Guía al estudiante a descubrirla.
-2. Responde SIEMPRE con preguntas que hagan reflexionar al estudiante.
-3. Si el estudiante llegó a la respuesta correcta, valídalo con entusiasmo y propón profundizar.
-4. Si está equivocado, no lo digas directamente — haz preguntas que lo lleven a reconsiderar.
-5. Ajusta la complejidad al nivel ${difficulty}:
-   - Básico: preguntas simples, analogías cotidianas, pasos muy pequeños
-   - Intermedio: conecta conceptos, pide explicaciones propias
-   - Avanzado: análisis crítico, casos borde, comparaciones
-   - Experto: síntesis, aplicación a problemas reales, enseña a otros
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Failed to create session: ${res.status} ${text}`)
+  }
 
-6. Sé cálido, motivador y paciente. Celebra el progreso.
-7. Máximo 3-4 preguntas por respuesta. No satures.
-8. En español peruano natural.
+  // NestJS TransformInterceptor wraps: { success, data: { id }, timestamp }
+  const raw = await res.json() as any
+  const payload = raw?.data ?? raw
+  const sessionId = payload?.id ?? payload?.sessionId
+  if (!sessionId) throw new Error('No sessionId returned from API')
 
-Responde siempre en español. Sé conciso pero profundo.`
+  sessionMap.set(studentId, sessionId)
+  return sessionId
 }
 
 router.post('/', async (req: Request, res: Response) => {
@@ -57,24 +73,59 @@ router.post('/', async (req: Request, res: Response) => {
       history: Array<{ role: 'user' | 'assistant'; content: string }>
     }
 
-    const systemPrompt = buildSystemPrompt(studentProfile, score, courseId)
+    if (!message || !studentProfile) {
+      res.status(400).json({ error: 'message and studentProfile are required' })
+      return
+    }
 
-    const messages = [
-      ...history.map(h => ({
-        role: h.role as 'user' | 'assistant',
-        content: h.content,
-      })),
-      { role: 'user' as const, content: message },
-    ]
+    // Use student name as a stable key — in production use studentId from auth
+    const studentId = studentProfile.name.replace(/\s+/g, '_').toLowerCase()
+    const topic = buildTopic(studentProfile, score ?? 50, courseId)
 
-    const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 600,
-      system: systemPrompt,
-      messages,
+    const sessionId = await getOrCreateSession(studentId, courseId, topic)
+
+    const msgRes = await fetch(`${getApiUrl()}/chat/sessions/${sessionId}/message`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': getApiKey(),
+      },
+      body: JSON.stringify({
+        message,
+        studentId,
+        history: history?.slice(-10) ?? [],
+      }),
     })
 
-    const reply = response.content[0].type === 'text' ? response.content[0].text : ''
+    if (!msgRes.ok) {
+      // Session may be expired — clear cache and retry once
+      sessionMap.delete(studentId)
+      const newSessionId = await getOrCreateSession(studentId, courseId, topic)
+
+      const retryRes = await fetch(`${getApiUrl()}/chat/sessions/${newSessionId}/message`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': getApiKey(),
+        },
+        body: JSON.stringify({ message, studentId, history: history?.slice(-10) ?? [] }),
+      })
+
+      if (!retryRes.ok) {
+        const errText = await retryRes.text()
+        throw new Error(`Message send failed after retry: ${retryRes.status} ${errText}`)
+      }
+
+      const retryRaw = await retryRes.json() as any
+      const retryPayload = retryRaw?.data ?? retryRaw
+      const reply = retryPayload?.content ?? retryPayload?.reply ?? retryPayload?.response ?? ''
+      res.json({ reply })
+      return
+    }
+
+    const msgRaw = await msgRes.json() as any
+    const msgPayload = msgRaw?.data ?? msgRaw
+    const reply = msgPayload?.content ?? msgPayload?.reply ?? msgPayload?.response ?? ''
     res.json({ reply })
   } catch (err) {
     console.error('Chat error:', err)
