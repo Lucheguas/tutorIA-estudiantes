@@ -60,7 +60,7 @@ function AppRoutes() {
           >
             <Menu className="w-5 h-5" />
           </button>
-          <span className="font-bold text-stone-900">TutorIA</span>
+          <span className="font-bold text-stone-900">E-Tutor UNFV</span>
           <div className="ml-auto flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center text-stone-900 text-xs font-bold">
               {profile.iniciales}

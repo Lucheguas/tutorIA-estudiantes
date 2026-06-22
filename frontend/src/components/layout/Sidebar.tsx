@@ -41,7 +41,7 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
           <div className="w-9 h-9 rounded-xl bg-orange-500/20 border border-orange-500/40 flex items-center justify-center">
             <BookOpen className="w-5 h-5 text-orange-500" />
           </div>
-          <span className="font-bold text-stone-900 text-lg">TutorIA</span>
+          <span className="font-bold text-stone-900 text-lg">E-Tutor UNFV</span>
         </div>
         <button
           onClick={onClose}

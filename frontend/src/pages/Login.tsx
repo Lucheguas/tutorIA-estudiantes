@@ -33,7 +33,7 @@ export default function Login() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-orange-500/20 border border-orange-500/30 mb-4">
             <BookOpen className="w-8 h-8 text-orange-500" />
           </div>
-          <h1 className="text-3xl font-bold text-stone-900">TutorIA</h1>
+          <h1 className="text-3xl font-bold text-stone-900">E-Tutor UNFV</h1>
           <p className="text-stone-500 mt-1">Plataforma de tutoría inteligente · UNFV</p>
         </div>
 
