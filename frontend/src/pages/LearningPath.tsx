@@ -1,304 +1,161 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { supabase } from '../lib/supabase'
-import { apiGet } from '../lib/apiClient'
 import { useAuth } from '../context/AuthContext'
-import type { StudentCourse, SyllabusTopic } from '../types'
-import { GitBranch, CheckCircle, Circle, Lock, Star, Zap, Trophy, Flame, Shield } from 'lucide-react'
+import { GitBranch, CheckCircle, Circle, Lock, Star, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const CURRENT_WEEK = 12
 
-interface GamificationProfile {
-  xp?: number
-  total_xp?: number
-  level?: number
-  streak?: number
-  streaks?: number
-  badges?: Array<{ id: string; name?: string; title?: string; icon?: string }>
-  achievements?: Array<{ id: string; title?: string; badge?: string }>
-}
-
-function GamificationCard({ studentId }: { studentId: string }) {
-  const [gamif, setGamif] = useState<GamificationProfile | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    if (!studentId) return
-    apiGet<GamificationProfile>(`/gamification/profile/${studentId}`)
-      .then(data => setGamif(data))
-      .catch(() => setGamif(null))
-      .finally(() => setLoading(false))
-  }, [studentId])
-
-  if (loading) {
-    return (
-      <div className="glass rounded-2xl p-5 animate-pulse">
-        <div className="h-4 bg-[#e8e4df] rounded w-1/3 mb-3" />
-        <div className="flex gap-4">
-          <div className="h-10 bg-[#e8e4df] rounded-xl w-20" />
-          <div className="h-10 bg-[#e8e4df] rounded-xl w-20" />
-          <div className="h-10 bg-[#e8e4df] rounded-xl w-20" />
-        </div>
-      </div>
-    )
-  }
-
-  if (!gamif) return null
-
-  const xp = gamif.xp ?? gamif.total_xp ?? 0
-  const level = gamif.level ?? 1
-  const streak = gamif.streak ?? gamif.streaks ?? 0
-  const badges = gamif.badges ?? gamif.achievements ?? []
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="glass rounded-2xl p-5 border border-orange-500/10"
-    >
-      <div className="flex items-center gap-2 mb-4">
-        <Trophy className="w-4 h-4 text-orange-400" />
-        <span className="text-stone-900 font-semibold text-sm">Tu perfil de gamificación</span>
-      </div>
-
-      <div className="grid grid-cols-3 gap-3 mb-4">
-        <div className="bg-[#f5f3f0] border border-[#e8e4df] rounded-xl p-3 text-center">
-          <Star className="w-4 h-4 text-yellow-400 mx-auto mb-1" />
-          <div className="text-lg font-bold text-stone-900">{xp.toLocaleString()}</div>
-          <div className="text-xs text-stone-400">XP total</div>
-        </div>
-        <div className="bg-[#f5f3f0] border border-[#e8e4df] rounded-xl p-3 text-center">
-          <Shield className="w-4 h-4 text-orange-400 mx-auto mb-1" />
-          <div className="text-lg font-bold text-stone-900">{level}</div>
-          <div className="text-xs text-stone-400">Nivel</div>
-        </div>
-        <div className="bg-[#f5f3f0] border border-[#e8e4df] rounded-xl p-3 text-center">
-          <Flame className="w-4 h-4 text-red-400 mx-auto mb-1" />
-          <div className="text-lg font-bold text-stone-900">{streak}</div>
-          <div className="text-xs text-stone-400">Racha días</div>
-        </div>
-      </div>
-
-      {badges.length > 0 && (
-        <div>
-          <p className="text-xs text-stone-400 mb-2">Logros obtenidos</p>
-          <div className="flex flex-wrap gap-2">
-            {badges.map(b => (
-              <span
-                key={b.id}
-                className="text-xs bg-orange-500/10 border border-orange-500/20 text-orange-300 px-2.5 py-1 rounded-lg"
-              >
-                {b.icon ? `${b.icon} ` : ''}{b.name ?? b.title ?? b.badge ?? b.id}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-    </motion.div>
-  )
-}
+const CURRICULUM = [
+  { week: 1,  title: 'Introducción a Bases de Datos', description: 'Conceptos fundamentales, tipos de BD, historia y evolución de los SGBD.' },
+  { week: 2,  title: 'Modelo Entidad-Relación', description: 'Entidades, atributos, relaciones, cardinalidad y diseño conceptual.' },
+  { week: 3,  title: 'Modelo Relacional', description: 'Tablas, tuplas, dominios, claves primarias y foráneas.' },
+  { week: 4,  title: 'Álgebra Relacional', description: 'Selección, proyección, unión, intersección, diferencia y producto cartesiano.' },
+  { week: 5,  title: 'SQL Básico', description: 'SELECT, FROM, WHERE, ORDER BY, GROUP BY, HAVING. Funciones de agregado.' },
+  { week: 6,  title: 'SQL Avanzado — JOINs', description: 'INNER JOIN, LEFT/RIGHT JOIN, FULL OUTER JOIN, CROSS JOIN y subconsultas.' },
+  { week: 7,  title: 'Normalización', description: '1FN, 2FN, 3FN y BCNF. Dependencias funcionales y descomposición sin pérdida.' },
+  { week: 8,  title: 'Integridad y Restricciones', description: 'Integridad referencial, constraints, triggers y reglas de negocio.' },
+  { week: 9,  title: 'Índices y Optimización', description: 'B-Trees, índices compuestos, EXPLAIN ANALYZE y optimización de consultas.' },
+  { week: 10, title: 'Transacciones y ACID', description: 'Atomicidad, consistencia, aislamiento, durabilidad. COMMIT, ROLLBACK, SAVEPOINT.' },
+  { week: 11, title: 'Concurrencia y Bloqueos', description: 'Problemas de concurrencia, niveles de aislamiento, deadlocks y su resolución.' },
+  { week: 12, title: 'Bases de Datos Distribuidas', description: 'Fragmentación, replicación, teorema CAP y sistemas distribuidos.' },
+  { week: 13, title: 'NoSQL — Documentos y Clave-Valor', description: 'MongoDB, Redis. Casos de uso, ventajas y comparación con SQL.' },
+  { week: 14, title: 'NoSQL — Columnar y Grafos', description: 'Cassandra, Neo4j. Modelos de datos y aplicaciones reales.' },
+  { week: 15, title: 'Seguridad en BD', description: 'Autenticación, autorización, roles, cifrado y auditoría.' },
+  { week: 16, title: 'Proyecto Final', description: 'Diseño, implementación y presentación del proyecto integrador.' },
+]
 
 export default function LearningPath() {
-  const { profile, refreshProfile } = useAuth()
-  const [courses, setCourses] = useState<StudentCourse[]>([])
-  const [topics, setTopics] = useState<SyllabusTopic[]>([])
-  const [selected, setSelected] = useState<string | null>(null)
-  const [completing, setCompleting] = useState<string | null>(null)
+  const { profile } = useAuth()
+  const storageKey = `lp_done_${profile?.estudiante_id ?? 'guest'}`
 
-  useEffect(() => {
-    if (!profile) return
-    supabase.from('student_courses').select('*, course:courses(*)').eq('student_id', profile.id).eq('cycle', profile.cycle)
-      .then(({ data }) => {
-        setCourses(data ?? [])
-        if (data && data.length > 0) {
-          setSelected(data[0].course_id)
-          loadTopics(data[0].course_id)
-        }
-      })
-  }, [profile])
+  const [done, setDone] = useState<number[]>(() => {
+    try { return JSON.parse(localStorage.getItem(storageKey) ?? '[]') } catch { return [] }
+  })
 
-  async function loadTopics(courseId: string) {
-    const { data } = await supabase.from('syllabus_topics').select('*').eq('course_id', courseId).order('week')
-    setTopics(data ?? [])
+  if (!profile) return null
+
+  function isCompleted(week: number) { return done.includes(week) }
+  function isUnlocked(week: number)  { return week <= CURRENT_WEEK }
+
+  function completeTopic(week: number) {
+    if (isCompleted(week)) return
+    if (!isUnlocked(week)) { toast.error('Todavía no es tiempo para este tema'); return }
+    const next = [...done, week]
+    setDone(next)
+    localStorage.setItem(storageKey, JSON.stringify(next))
+    const xp = 30 + week * 2
+    toast.success(`+${xp} XP · ¡Tema completado!`)
   }
 
-  function isCompleted(topic: SyllabusTopic) {
-    return profile ? topic.completed_by?.includes(profile.id) : false
-  }
-
-  function isUnlocked(topic: SyllabusTopic) {
-    return topic.week <= CURRENT_WEEK
-  }
-
-  async function completeTopic(topic: SyllabusTopic) {
-    if (!profile || completing) return
-    if (isCompleted(topic)) return
-    if (!isUnlocked(topic)) { toast.error('Todavía no es tiempo para este tema'); return }
-
-    setCompleting(topic.id)
-    try {
-      const newCompleted = [...(topic.completed_by ?? []), profile.id]
-      await supabase.from('syllabus_topics').update({ completed_by: newCompleted }).eq('id', topic.id)
-
-      const xpGain = 30 + topic.week * 2
-      await supabase.from('student_profiles').update({
-        xp: (profile.xp ?? 0) + xpGain,
-        level: Math.floor(((profile.xp ?? 0) + xpGain) / 500) + 1,
-      }).eq('id', profile.id)
-
-      await supabase.from('notifications').insert({
-        user_id: profile.user_id,
-        title: '¡Tema completado!',
-        message: `Completaste "${topic.title}" y ganaste ${xpGain} XP.`,
-        type: 'success',
-        read: false,
-      })
-
-      setTopics(prev => prev.map(t => t.id === topic.id ? { ...t, completed_by: newCompleted } : t))
-      await refreshProfile()
-      toast.success(`+${xpGain} XP · ¡Tema completado!`)
-    } finally {
-      setCompleting(null)
-    }
-  }
-
-  const selectedCourse = courses.find(c => c.course_id === selected)
-  const completedCount = topics.filter(isCompleted).length
-  const progressPct = topics.length > 0 ? completedCount / topics.length * 100 : 0
+  const completedCount = done.length
+  const progressPct = (completedCount / CURRICULUM.length) * 100
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-stone-900 flex items-center gap-2">
-          <GitBranch className="w-6 h-6 text-orange-500" /> Ruta de Aprendizaje
+        <h1 className="text-xl sm:text-2xl font-bold text-stone-900 flex items-center gap-2">
+          <GitBranch className="w-5 h-5 sm:w-6 sm:h-6 text-orange-500" /> Ruta de Aprendizaje
         </h1>
-        <p className="text-stone-500 mt-1">Avanza por los temas del sílabo y gana XP</p>
+        <p className="text-stone-500 text-sm mt-1">Base de Datos II · Avanza por los temas y gana XP</p>
       </div>
 
-      {/* Gamification panel from API */}
-      {profile && <GamificationCard studentId={profile.id} />}
-
-      {/* Course selector */}
-      <div className="flex flex-wrap gap-2">
-        {courses.map(c => (
-          <button
-            key={c.course_id}
-            onClick={() => { setSelected(c.course_id); loadTopics(c.course_id) }}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-              selected === c.course_id
-                ? 'bg-orange-500 text-stone-900'
-                : 'bg-[#f5f3f0] text-stone-500 hover:text-stone-900 border border-[#d6d0ca]'
-            }`}
-          >
-            {c.course?.name}
-          </button>
-        ))}
+      {/* Progress */}
+      <div className="glass rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-stone-900 font-medium text-sm">Progreso del curso</span>
+          <span className="text-sm text-stone-500">{completedCount}/{CURRICULUM.length} temas</span>
+        </div>
+        <div className="h-2 bg-[#e8e4df] rounded-full overflow-hidden">
+          <motion.div
+            className="h-full bg-gradient-to-r from-orange-600 to-orange-400 rounded-full"
+            animate={{ width: `${progressPct}%` }}
+            transition={{ duration: 0.8 }}
+          />
+        </div>
       </div>
 
-      {selected && (
-        <>
-          {/* Progress */}
-          <div className="glass rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-stone-900 font-medium">{selectedCourse?.course?.name}</span>
-              <span className="text-sm text-stone-500">{completedCount}/{topics.length} temas</span>
-            </div>
-            <div className="h-2 bg-[#e8e4df] rounded-full overflow-hidden">
+      {/* Git-branch style tree */}
+      <div className="relative">
+        <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-orange-500 to-[#e8e4df]" />
+
+        <div className="space-y-4 pl-20 relative">
+          {CURRICULUM.map((topic, idx) => {
+            const completed = isCompleted(topic.week)
+            const unlocked  = isUnlocked(topic.week)
+            const isCurrent = topic.week === CURRENT_WEEK
+            const xp = 30 + topic.week * 2
+
+            return (
               <motion.div
-                className="h-full bg-gradient-to-r from-orange-600 to-orange-400 rounded-full"
-                animate={{ width: `${progressPct}%` }}
-                transition={{ duration: 0.8 }}
-              />
-            </div>
-          </div>
-
-          {/* Git-branch style tree */}
-          <div className="relative">
-            {/* Vertical line */}
-            <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-orange-500 to-[#1a1a1a]" />
-
-            <div className="space-y-4 pl-20 relative">
-              {topics.map((topic, idx) => {
-                const completed = isCompleted(topic)
-                const unlocked = isUnlocked(topic)
-                const isCurrent = topic.week === CURRENT_WEEK
-
-                return (
-                  <motion.div
-                    key={topic.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                    className="relative"
-                  >
-                    {/* Node on branch */}
-                    <div className={`absolute -left-[52px] top-4 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                      completed ? 'bg-orange-500 border-orange-500' :
-                      isCurrent ? 'bg-orange-500/30 border-orange-500 pulse-orange' :
-                      unlocked ? 'bg-[#f5f3f0] border-orange-500/50' :
-                      'bg-[#f5f3f0] border-[#d6d0ca]'
-                    }`}>
-                      {completed && <CheckCircle className="w-3 h-3 text-stone-900" />}
-                      {isCurrent && !completed && <div className="w-2 h-2 rounded-full bg-orange-500" />}
-                    </div>
-
-                    {/* Week connector line */}
-                    <div className="absolute -left-[44px] top-5 w-7 h-0.5 bg-[#e8e4df]" />
-
-                    <div
-                      onClick={() => unlocked && !completed && completeTopic(topic)}
-                      className={`border rounded-2xl p-4 transition-all ${
-                        completed ? 'border-orange-500/40 bg-orange-500/10 cursor-default' :
-                        unlocked ? 'border-[#d6d0ca] bg-[#f5f3f0] hover:border-orange-500/50 cursor-pointer' :
-                        'border-[#e8e4df] bg-white opacity-50 cursor-not-allowed'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className={`text-xs px-2 py-0.5 rounded-md font-medium ${
-                              isCurrent ? 'bg-orange-500/20 text-orange-400' : 'bg-[#ede9e4] text-stone-400'
-                            }`}>
-                              Semana {topic.week}
-                            </span>
-                            {isCurrent && <span className="text-xs text-orange-400 flex items-center gap-1"><Zap className="w-3 h-3" /> Semana actual</span>}
-                          </div>
-                          <h4 className={`font-medium ${completed ? 'text-orange-300' : unlocked ? 'text-stone-900' : 'text-stone-400'}`}>
-                            {topic.title}
-                          </h4>
-                          <p className="text-stone-400 text-sm mt-1 line-clamp-2">{topic.description}</p>
-                        </div>
-                        <div className="flex-shrink-0 mt-1">
-                          {completed ? <CheckCircle className="w-5 h-5 text-orange-400" /> :
-                           unlocked ? <Circle className="w-5 h-5 text-stone-400" /> :
-                           <Lock className="w-5 h-5 text-gray-700" />}
-                        </div>
-                      </div>
-
-                      {unlocked && !completed && (
-                        <div className="mt-3 pt-3 border-t border-[#e8e4df] flex items-center justify-between">
-                          <span className="text-xs text-stone-400 flex items-center gap-1">
-                            <Star className="w-3 h-3 text-orange-500" /> +{30 + topic.week * 2} XP al completar
-                          </span>
-                          <span className="text-xs text-orange-400">Toca para marcar completado →</span>
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                )
-              })}
-
-              {topics.length === 0 && (
-                <div className="glass rounded-2xl p-8 text-center">
-                  <GitBranch className="w-10 h-10 text-stone-400 mx-auto mb-3" />
-                  <p className="text-stone-500">No hay temas en el sílabo de este curso aún.</p>
+                key={topic.week}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: idx * 0.04 }}
+                className="relative"
+              >
+                {/* Node */}
+                <div className={`absolute -left-[52px] top-4 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                  completed ? 'bg-orange-500 border-orange-500' :
+                  isCurrent ? 'bg-orange-500/30 border-orange-500 pulse-orange' :
+                  unlocked  ? 'bg-[#f5f3f0] border-orange-500/50' :
+                              'bg-[#f5f3f0] border-[#d6d0ca]'
+                }`}>
+                  {completed && <CheckCircle className="w-3 h-3 text-white" />}
+                  {isCurrent && !completed && <div className="w-2 h-2 rounded-full bg-orange-500" />}
                 </div>
-              )}
-            </div>
-          </div>
-        </>
-      )}
+
+                {/* Connector */}
+                <div className="absolute -left-[44px] top-5 w-7 h-0.5 bg-[#e8e4df]" />
+
+                <div
+                  onClick={() => unlocked && !completed && completeTopic(topic.week)}
+                  className={`border rounded-2xl p-4 transition-all ${
+                    completed ? 'border-orange-500/40 bg-orange-500/10 cursor-default' :
+                    unlocked  ? 'border-[#d6d0ca] bg-[#f5f3f0] hover:border-orange-500/50 cursor-pointer' :
+                                'border-[#e8e4df] bg-white opacity-50 cursor-not-allowed'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className={`text-xs px-2 py-0.5 rounded-md font-medium ${
+                          isCurrent ? 'bg-orange-500/20 text-orange-400' : 'bg-[#ede9e4] text-stone-400'
+                        }`}>
+                          Semana {topic.week}
+                        </span>
+                        {isCurrent && (
+                          <span className="text-xs text-orange-400 flex items-center gap-1">
+                            <Zap className="w-3 h-3" /> Semana actual
+                          </span>
+                        )}
+                      </div>
+                      <h4 className={`font-medium text-sm ${completed ? 'text-orange-400' : unlocked ? 'text-stone-900' : 'text-stone-400'}`}>
+                        {topic.title}
+                      </h4>
+                      <p className="text-stone-400 text-xs mt-1 line-clamp-2">{topic.description}</p>
+                    </div>
+                    <div className="flex-shrink-0 mt-1">
+                      {completed ? <CheckCircle className="w-5 h-5 text-orange-400" /> :
+                       unlocked  ? <Circle className="w-5 h-5 text-stone-400" /> :
+                                   <Lock className="w-5 h-5 text-stone-300" />}
+                    </div>
+                  </div>
+
+                  {unlocked && !completed && (
+                    <div className="mt-3 pt-3 border-t border-[#e8e4df] flex items-center justify-between">
+                      <span className="text-xs text-stone-400 flex items-center gap-1">
+                        <Star className="w-3 h-3 text-orange-500" /> +{xp} XP al completar
+                      </span>
+                      <span className="text-xs text-orange-400">Toca para marcar →</span>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }
