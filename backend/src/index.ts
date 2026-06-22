@@ -3,6 +3,7 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import { chatRouter } from './routes/chat'
 import { tutorRouter } from './routes/tutor'
+import { llmRouter } from './routes/llm'
 
 dotenv.config()
 
@@ -14,6 +15,7 @@ app.use(express.json())
 
 app.use('/api/chat', chatRouter)
 app.use('/api/tutor', tutorRouter)
+app.use('/api/llm', llmRouter)
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }))
 
