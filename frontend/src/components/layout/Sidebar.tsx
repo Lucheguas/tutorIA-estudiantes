@@ -1,68 +1,85 @@
 import { NavLink } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
-  LayoutDashboard, Calendar, BookOpen, GitBranch,
-  FolderOpen, Brain, MessageSquare, Bell, LogOut, Award
+  LayoutDashboard, Calendar, GitBranch,
+  FolderOpen, Brain, MessageSquare, Bell, LogOut, BookOpen, X
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
-import { useNotifications } from '../../hooks/useNotifications'
 
 const links = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/asistencias', icon: Calendar, label: 'Asistencias' },
-  { to: '/silabo', icon: BookOpen, label: 'Sílabo' },
-  { to: '/ruta', icon: GitBranch, label: 'Ruta de Aprendizaje' },
-  { to: '/recursos', icon: FolderOpen, label: 'Recursos' },
-  { to: '/chat', icon: MessageSquare, label: 'Tutor IA' },
-  { to: '/metodos', icon: Brain, label: 'Métodos de Estudio' },
+  { to: '/dashboard',      icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/asistencias',    icon: Calendar,         label: 'Asistencias' },
+  { to: '/ruta',           icon: GitBranch,        label: 'Ruta de Aprendizaje' },
+  { to: '/recursos',       icon: FolderOpen,       label: 'Recursos' },
+  { to: '/chat',           icon: MessageSquare,    label: 'Tutor IA' },
+  { to: '/metodos',        icon: Brain,            label: 'Métodos de Estudio' },
+  { to: '/notificaciones', icon: Bell,             label: 'Notificaciones' },
 ]
 
-export default function Sidebar() {
-  const { profile } = useAuth()
-  const { unread } = useNotifications()
+interface SidebarProps {
+  isOpen:  boolean
+  onClose: () => void
+}
 
-  const xpForNextLevel = (profile?.level ?? 1) * 500
-  const xpProgress = ((profile?.xp ?? 0) % xpForNextLevel) / xpForNextLevel * 100
+function SidebarContent({ onClose }: { onClose: () => void }) {
+  const { profile } = useAuth()
+
+  const riesgoColor = {
+    ROJO:       'text-red-400 bg-red-500/20',
+    ROJO_FALTAS:'text-red-400 bg-red-500/20',
+    AMBAR:      'text-yellow-400 bg-yellow-500/20',
+    VERDE:      'text-green-400 bg-green-500/20',
+    PENDIENTE:  'text-gray-400 bg-gray-500/20',
+  }[profile?.riesgo ?? 'PENDIENTE'] ?? 'text-gray-400 bg-gray-500/20'
 
   return (
-    <aside className="w-64 bg-[#111] border-r border-[#222] flex flex-col h-screen sticky top-0">
-      {/* Logo */}
-      <div className="p-6 border-b border-[#222]">
+    <div className="flex flex-col h-full">
+      {/* Logo + close on mobile */}
+      <div className="p-5 border-b border-[#222] flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-orange-500/20 border border-orange-500/40 flex items-center justify-center">
             <BookOpen className="w-5 h-5 text-orange-500" />
           </div>
           <span className="font-bold text-white text-lg">TutorIA</span>
         </div>
+        <button
+          onClick={onClose}
+          className="md:hidden p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-[#1a1a1a] transition"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
 
-      {/* XP / Level */}
+      {/* Student info */}
       {profile && (
         <div className="p-4 border-b border-[#222]">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center text-white font-bold text-sm">
-              {profile.full_name?.charAt(0) ?? '?'}
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-full bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+              {profile.iniciales}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white text-sm font-medium truncate">{profile.full_name}</p>
-              <p className="text-gray-500 text-xs">{profile.career}</p>
+              <p className="text-white text-sm font-medium truncate leading-tight">
+                {profile.nombre.split(' ').slice(2).join(' ') || profile.nombre.split(' ')[0]}
+              </p>
+              <p className="text-gray-500 text-xs truncate">{profile.codigo}@unfv.edu.pe</p>
             </div>
           </div>
-          <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
-            <span className="flex items-center gap-1"><Award className="w-3 h-3 text-orange-500" /> Nivel {profile.level}</span>
-            <span>{profile.xp % xpForNextLevel} / {xpForNextLevel} XP</span>
+          <div className="mt-3 flex items-center gap-2 flex-wrap">
+            <span className="text-xs bg-[#1a1a1a] text-gray-400 border border-[#333] px-2 py-1 rounded-lg">
+              Sección {profile.seccion}
+            </span>
+            {profile.promedio !== null && (
+              <span className="text-xs bg-[#1a1a1a] text-orange-400 border border-orange-500/30 px-2 py-1 rounded-lg">
+                Prom. {profile.promedio.toFixed(1)}
+              </span>
+            )}
+            <span className={`text-xs px-2 py-1 rounded-lg ${riesgoColor}`}>
+              {profile.riesgo === 'VERDE' ? 'Al día' :
+               profile.riesgo === 'AMBAR' ? 'Atención' :
+               profile.riesgo === 'PENDIENTE' ? 'Sin notas' : 'En riesgo'}
+            </span>
           </div>
-          <div className="h-1.5 bg-[#2a2a2a] rounded-full overflow-hidden">
-            <motion.div
-              className="h-full bg-gradient-to-r from-orange-600 to-orange-400 rounded-full"
-              animate={{ width: `${xpProgress}%` }}
-              transition={{ duration: 0.6 }}
-            />
-          </div>
-          {profile.streak > 0 && (
-            <p className="text-xs text-orange-400 mt-2">🔥 {profile.streak} días seguidos</p>
-          )}
         </div>
       )}
 
@@ -72,6 +89,7 @@ export default function Sidebar() {
           <NavLink
             key={to}
             to={to}
+            onClick={onClose}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
                 isActive
@@ -84,25 +102,6 @@ export default function Sidebar() {
             {label}
           </NavLink>
         ))}
-
-        <NavLink
-          to="/notificaciones"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
-              isActive ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'text-gray-400 hover:text-white hover:bg-[#1a1a1a]'
-            }`
-          }
-        >
-          <div className="relative">
-            <Bell className="w-4 h-4" />
-            {unread > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-orange-500 rounded-full text-[10px] text-white flex items-center justify-center">
-                {unread > 9 ? '9+' : unread}
-              </span>
-            )}
-          </div>
-          Notificaciones
-        </NavLink>
       </nav>
 
       {/* Logout */}
@@ -115,6 +114,32 @@ export default function Sidebar() {
           Cerrar sesión
         </button>
       </div>
-    </aside>
+    </div>
+  )
+}
+
+export default function Sidebar({ isOpen, onClose }: SidebarProps) {
+  return (
+    <>
+      {/* Desktop: always visible */}
+      <aside className="hidden md:flex w-64 bg-[#111] border-r border-[#222] flex-col h-screen sticky top-0 flex-shrink-0">
+        <SidebarContent onClose={onClose} />
+      </aside>
+
+      {/* Mobile: slide-over drawer */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.aside
+            initial={{ x: -280 }}
+            animate={{ x: 0 }}
+            exit={{ x: -280 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            className="md:hidden fixed inset-y-0 left-0 w-72 bg-[#111] border-r border-[#222] flex flex-col z-30"
+          >
+            <SidebarContent onClose={onClose} />
+          </motion.aside>
+        )}
+      </AnimatePresence>
+    </>
   )
 }

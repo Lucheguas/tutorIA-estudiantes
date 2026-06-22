@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { Bell, CheckCheck, AlertTriangle, Info, CheckCircle, XCircle } from 'lucide-react'
-import { useNotifications } from '../hooks/useNotifications'
+import { useNotifications, type Notif } from '../hooks/useNotifications'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -15,7 +15,7 @@ export default function Notifications() {
   const { notifications, unread, markRead, markAllRead } = useNotifications()
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
@@ -41,7 +41,7 @@ export default function Notifications() {
           </div>
         )}
 
-        {notifications.map((notif, idx) => {
+        {notifications.map((notif: Notif, idx) => {
           const { icon: Icon, color, bg } = typeConfig[notif.type] ?? typeConfig.info
 
           return (

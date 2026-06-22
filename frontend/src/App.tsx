@@ -1,11 +1,11 @@
+import { useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
+import { Menu } from 'lucide-react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Login from './pages/Login'
-import ProfileQuestionnaire from './pages/ProfileQuestionnaire'
 import Dashboard from './pages/Dashboard'
 import AttendancePage from './pages/Attendance'
-import SyllabusPage from './pages/Syllabus'
 import LearningPath from './pages/LearningPath'
 import Resources from './pages/Resources'
 import Chat from './pages/Chat'
@@ -15,13 +15,14 @@ import Sidebar from './components/layout/Sidebar'
 
 function AppRoutes() {
   const { user, profile, loading } = useAuth()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-gray-400">Cargando...</p>
+          <p className="text-gray-400 text-sm">Cargando...</p>
         </div>
       </div>
     )
@@ -29,26 +30,58 @@ function AppRoutes() {
 
   if (!user) return <Login />
 
-  // Profile incomplete — needs career set
-  if (!profile?.career) return <ProfileQuestionnaire />
+  if (!profile) return (
+    <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-gray-400 text-sm">Cargando tu perfil...</p>
+      </div>
+    </div>
+  )
 
   return (
     <div className="flex min-h-screen bg-[#0f0f0f]">
-      <Sidebar />
-      <main className="flex-1 overflow-y-auto">
-        <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/asistencias" element={<AttendancePage />} />
-          <Route path="/silabo" element={<SyllabusPage />} />
-          <Route path="/ruta" element={<LearningPath />} />
-          <Route path="/recursos" element={<Resources />} />
-          <Route path="/chat" element={<Chat />} />
-          <Route path="/metodos" element={<StudyMethods />} />
-          <Route path="/notificaciones" element={<Notifications />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </main>
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      {/* Mobile backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-20 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Mobile header */}
+        <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-[#222] bg-[#111] sticky top-0 z-10">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-[#1a1a1a] transition"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <span className="font-bold text-white">TutorIA</span>
+          <div className="ml-auto flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center text-white text-xs font-bold">
+              {profile.iniciales}
+            </div>
+          </div>
+        </div>
+
+        <main className="flex-1 overflow-y-auto">
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/asistencias" element={<AttendancePage />} />
+            <Route path="/ruta" element={<LearningPath />} />
+            <Route path="/recursos" element={<Resources />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/metodos" element={<StudyMethods />} />
+            <Route path="/notificaciones" element={<Notifications />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </main>
+      </div>
     </div>
   )
 }

@@ -1,10 +1,8 @@
+import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
-import dotenv from 'dotenv'
 import { chatRouter } from './routes/chat'
 import { tutorRouter } from './routes/tutor'
-
-dotenv.config()
 
 const app = express()
 const PORT = process.env.PORT ?? 3001

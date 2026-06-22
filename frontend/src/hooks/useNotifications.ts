@@ -1,40 +1,33 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import type { Notification } from '../types'
+
+export interface Notif {
+  id:         string
+  title:      string
+  message:    string
+  type:       'warning' | 'info' | 'success' | 'danger'
+  read:       boolean
+  created_at: string
+}
 
 export function useNotifications() {
   const { user } = useAuth()
-  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [notifications, setNotifications] = useState<Notif[]>([])
 
   async function load() {
     if (!user) return
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('notifications')
-      .select('*')
+      .select('id,title,message,type,read,created_at')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(50)
-    setNotifications(data ?? [])
+    // Tabla puede no existir — simplemente queda vacío
+    if (!error && data) setNotifications(data as Notif[])
   }
 
-  useEffect(() => {
-    load()
-    if (!user) return
-    const channel = supabase
-      .channel('notifications')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'notifications',
-        filter: `user_id=eq.${user.id}`,
-      }, payload => {
-        setNotifications(prev => [payload.new as Notification, ...prev])
-        new Notification(payload.new.title, { body: payload.new.message })
-      })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [user])
+  useEffect(() => { load() }, [user])
 
   async function markRead(id: string) {
     await supabase.from('notifications').update({ read: true }).eq('id', id)

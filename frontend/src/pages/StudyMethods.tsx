@@ -171,7 +171,7 @@ export default function StudyMethods() {
   const [expanded, setExpanded] = useState<string | null>(null)
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           <Brain className="w-6 h-6 text-orange-500" /> Métodos de Estudio
