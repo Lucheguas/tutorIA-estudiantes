@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { FolderOpen, ExternalLink, Search, Youtube, BookOpen, Code2, Database } from 'lucide-react'
+import { FolderOpen, ExternalLink, Search, Play, BookOpen, Code2, Database } from 'lucide-react'
 
 interface Resource {
   title:    string
@@ -29,7 +29,7 @@ const RESOURCES: Resource[] = [
 
 const typeConfig = {
   doc:      { icon: BookOpen, label: 'Documentación', color: 'text-blue-400 bg-blue-500/10 border-blue-500/30' },
-  video:    { icon: Youtube,  label: 'Video',          color: 'text-red-400  bg-red-500/10  border-red-500/30'  },
+  video:    { icon: Play,     label: 'Video',          color: 'text-red-400  bg-red-500/10  border-red-500/30'  },
   practice: { icon: Code2,    label: 'Práctica',       color: 'text-green-400 bg-green-500/10 border-green-500/30' },
   tool:     { icon: Database, label: 'Herramienta',    color: 'text-orange-400 bg-orange-500/10 border-orange-500/30' },
 }

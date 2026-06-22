@@ -1,237 +1,173 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { supabase } from '../lib/supabase'
 import { apiPost } from '../lib/apiClient'
 import { useAuth } from '../context/AuthContext'
-import type { StudentCourse, ChatMessage } from '../types'
-import { MessageSquare, Send, Loader2, Bot, User, Sparkles, Cpu } from 'lucide-react'
+import { MessageSquare, Send, Loader2, Bot, User, Sparkles, Cpu, Trash2 } from 'lucide-react'
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:3001'
 
+interface Msg {
+  id:          string
+  role:        'user' | 'assistant'
+  content:     string
+  score_impact?: number
+}
+
 export default function Chat() {
   const { profile } = useAuth()
-  const [courses, setCourses] = useState<StudentCourse[]>([])
-  const [selectedCourse, setSelectedCourse] = useState<string | null>(null)
-  const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [input, setInput] = useState('')
-  const [sending, setSending] = useState(false)
-  const [score, setScore] = useState(50)
-  // Track which session the fallback direct API used
-  const directSessionId = useRef<string | null>(null)
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const [messages, setMessages]   = useState<Msg[]>([])
+  const [input,    setInput]      = useState('')
+  const [sending,  setSending]    = useState(false)
+  const [score,    setScore]      = useState(50)
+  const directSessionId           = useRef<string | null>(null)
+  const bottomRef                 = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (!profile) return
-    supabase.from('student_courses').select('*, course:courses(*)').eq('student_id', profile.id).eq('cycle', profile.cycle)
-      .then(({ data }) => setCourses(data ?? []))
-  }, [profile])
+  if (!profile) return null
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  const primerNombre = profile.nombre.split(' ').slice(2, 4).join(' ') || profile.nombre.split(' ')[0]
 
-  async function loadHistory(courseId: string | null) {
-    if (!profile) return
-    const q = supabase.from('chat_messages').select('*').eq('student_id', profile.id).order('created_at')
-    if (courseId) q.eq('course_id', courseId)
-    else q.is('course_id', null)
-    const { data } = await q.limit(50)
-    setMessages(data ?? [])
+  const studentProfilePayload = {
+    name:          profile.nombre,
+    career:        'Informática · Base de Datos II',
+    cycle:         5,
+    learning_style:'visual',
+    comfort_level: profile.riesgo === 'VERDE' ? 'alto' : profile.riesgo === 'AMBAR' ? 'medio' : 'bajo',
+    level:         1,
   }
 
-  function selectCourse(courseId: string | null) {
-    setSelectedCourse(courseId)
-    loadHistory(courseId)
-  }
-
-  // Fallback: call the AI API directly when the backend is unreachable
+  // Fallback: llama directo a la API externa si el backend local falla
   async function callDirectFallback(message: string): Promise<string> {
-    const studentId = profile!.id
-
     if (!directSessionId.current) {
       const session = await apiPost<{ sessionId?: string; id?: string }>('/chat/sessions', {
-        studentId,
-        courseId: selectedCourse ?? undefined,
-        topic: `Tutor socrático para ${profile!.full_name} (${profile!.career}, ciclo ${profile!.cycle}). Estilo: ${profile!.learning_style}. En español peruano.`,
+        studentId: profile.estudiante_id,
+        courseId:  undefined,
+        topic: `Tutor socrático para ${profile.nombre} (Base de Datos II, ciclo 5). En español peruano.`,
       })
       directSessionId.current = session.sessionId ?? session.id ?? null
-      if (!directSessionId.current) throw new Error('No sessionId from direct API')
+      if (!directSessionId.current) throw new Error('No sessionId')
     }
-
     const resp = await apiPost<{ content?: string; reply?: string; response?: string }>(
       `/chat/sessions/${directSessionId.current}/message`,
-      { message, studentId }
+      { message, studentId: profile.estudiante_id }
     )
     return resp.content ?? resp.reply ?? resp.response ?? ''
   }
 
   async function sendMessage() {
-    if (!input.trim() || !profile || sending) return
-    const userMsg = input.trim()
+    if (!input.trim() || sending) return
+    const text = input.trim()
     setInput('')
     setSending(true)
 
-    const userRecord: ChatMessage = {
-      id: crypto.randomUUID(),
-      student_id: profile.id,
-      course_id: selectedCourse,
-      role: 'user',
-      content: userMsg,
-      score_impact: 0,
-      created_at: new Date().toISOString(),
-    }
-    setMessages(prev => [...prev, userRecord])
+    const userMsg: Msg = { id: crypto.randomUUID(), role: 'user', content: text }
+    const next = [...messages, userMsg]
+    setMessages(next)
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
 
     try {
       const startTime = Date.now()
-
-      // Save user message
-      await supabase.from('chat_messages').insert({
-        student_id: profile.id,
-        course_id: selectedCourse,
-        role: 'user',
-        content: userMsg,
-        score_impact: 0,
-      })
-
-      const studentProfilePayload = {
-        name: profile.full_name,
-        career: profile.career,
-        cycle: profile.cycle,
-        learning_style: profile.learning_style,
-        comfort_level: profile.comfort_level,
-        level: profile.level,
-      }
-
       let reply = ''
 
       try {
-        // Primary: call local backend (which uses our Llama API)
         const res = await fetch(`${BACKEND_URL}/api/chat`, {
-          method: 'POST',
+          method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            message: userMsg,
+            message: text,
             studentProfile: studentProfilePayload,
-            courseId: selectedCourse,
+            courseId: null,
             score,
-            history: messages.slice(-10).map(m => ({ role: m.role, content: m.content })),
+            history: next.slice(-10).map(m => ({ role: m.role, content: m.content })),
           }),
         })
-
-        if (!res.ok) throw new Error(`Backend ${res.status}`)
+        if (!res.ok) throw new Error(`backend ${res.status}`)
         const data = await res.json() as { reply?: string }
         reply = data.reply ?? ''
       } catch (backendErr) {
-        console.warn('Backend unreachable, using direct API fallback:', backendErr)
-        reply = await callDirectFallback(userMsg)
+        console.warn('Backend no disponible, usando API directa:', backendErr)
+        reply = await callDirectFallback(text)
       }
 
-      const responseTime = (Date.now() - startTime) / 1000
-      const timeBonus = responseTime < 10 ? 5 : responseTime < 30 ? 2 : 0
-      const newScore = Math.min(100, Math.max(0, score + timeBonus))
-      setScore(newScore)
-
-      const aiRecord: ChatMessage = {
-        id: crypto.randomUUID(),
-        student_id: profile.id,
-        course_id: selectedCourse,
-        role: 'assistant',
-        content: reply,
-        score_impact: timeBonus,
-        created_at: new Date().toISOString(),
-      }
-      setMessages(prev => [...prev, aiRecord])
-
-      await supabase.from('chat_messages').insert({
-        student_id: profile.id,
-        course_id: selectedCourse,
-        role: 'assistant',
-        content: reply,
-        score_impact: timeBonus,
-      })
-
-      // XP for interaction
-      await supabase.from('student_profiles').update({
-        xp: (profile.xp ?? 0) + 5,
-      }).eq('id', profile.id)
-
+      const timeBonus = (Date.now() - startTime) / 1000 < 10 ? 5 : 2
+      setScore(s => Math.min(100, s + timeBonus))
+      setMessages(prev => [...prev, {
+        id: crypto.randomUUID(), role: 'assistant', content: reply, score_impact: timeBonus,
+      }])
     } catch {
       setMessages(prev => [...prev, {
-        id: crypto.randomUUID(),
-        student_id: profile.id,
-        course_id: selectedCourse,
-        role: 'assistant',
-        content: 'Hubo un error al conectarme. Verifica la conexión con el servidor.',
-        score_impact: 0,
-        created_at: new Date().toISOString(),
+        id: crypto.randomUUID(), role: 'assistant',
+        content: 'Error al conectarme. Verifica que el backend esté corriendo.',
       }])
     } finally {
       setSending(false)
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
     }
   }
 
   const difficulty = score < 30 ? 'Básico' : score < 60 ? 'Intermedio' : score < 85 ? 'Avanzado' : 'Experto'
-  const diffColor = score < 30 ? 'text-blue-400' : score < 60 ? 'text-green-400' : score < 85 ? 'text-yellow-400' : 'text-red-400'
+  const diffColor  = score < 30 ? 'text-blue-400' : score < 60 ? 'text-green-400' : score < 85 ? 'text-yellow-400' : 'text-red-400'
 
   return (
-    <div className="flex flex-col h-[calc(100vh-0px)] p-6 gap-4">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col h-[calc(100dvh-56px)] md:h-screen p-3 sm:p-6 gap-3">
+      {/* Header */}
+      <div className="flex items-start justify-between flex-shrink-0 gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <MessageSquare className="w-6 h-6 text-orange-500" /> Tutor IA
+          <h1 className="text-lg sm:text-2xl font-bold text-white flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-orange-500" /> Tutor IA
           </h1>
-          <p className="text-gray-400 text-sm mt-0.5">Modelo socrático · Te guío con preguntas</p>
-          {/* Powered-by badge */}
+          <p className="text-gray-400 text-xs sm:text-sm mt-0.5">Método socrático · Te guío con preguntas</p>
           <a
             href="https://llm.mystic-byte.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 mt-1 px-2.5 py-1 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-xs text-gray-500 hover:text-gray-300 transition-colors"
+            className="inline-flex items-center gap-1.5 mt-1 px-2 py-1 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-xs text-gray-500 hover:text-gray-300 transition-colors"
           >
             <Cpu className="w-3 h-3 text-orange-500" />
-            Powered by Llama 3 · llm.mystic-byte.com
+            Powered by Llama 3 · mystic-byte.com
           </a>
         </div>
-        <div className="text-right">
+        <div className="flex flex-col items-end gap-1">
           <div className={`text-sm font-semibold ${diffColor}`}>{difficulty}</div>
           <div className="text-xs text-gray-500">Score: {score}/100</div>
+          {messages.length > 0 && (
+            <button
+              onClick={() => { setMessages([]); directSessionId.current = null }}
+              className="flex items-center gap-1 text-xs text-gray-600 hover:text-red-400 transition mt-1"
+            >
+              <Trash2 className="w-3 h-3" /> Limpiar
+            </button>
+          )}
         </div>
-      </div>
-
-      {/* Course filter */}
-      <div className="flex flex-wrap gap-2">
-        <button
-          onClick={() => selectCourse(null)}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-            selectedCourse === null ? 'bg-orange-500 text-white' : 'bg-[#1a1a1a] text-gray-400 border border-[#333]'
-          }`}
-        >
-          General
-        </button>
-        {courses.map(c => (
-          <button
-            key={c.course_id}
-            onClick={() => selectCourse(c.course_id)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              selectedCourse === c.course_id ? 'bg-orange-500 text-white' : 'bg-[#1a1a1a] text-gray-400 border border-[#333]'
-            }`}
-          >
-            {c.course?.name}
-          </button>
-        ))}
       </div>
 
       {/* Messages */}
-      <div className="flex-1 glass rounded-2xl p-4 overflow-y-auto space-y-4">
+      <div className="flex-1 glass rounded-2xl p-3 sm:p-4 overflow-y-auto space-y-3 min-h-0">
         {messages.length === 0 && (
-          <div className="h-full flex flex-col items-center justify-center text-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-orange-500/20 border border-orange-500/30 flex items-center justify-center float">
-              <Sparkles className="w-8 h-8 text-orange-500" />
+          <div className="h-full flex flex-col items-center justify-center text-center gap-4 px-4">
+            <div className="w-14 h-14 rounded-2xl bg-orange-500/20 border border-orange-500/30 flex items-center justify-center">
+              <Sparkles className="w-7 h-7 text-orange-500" />
             </div>
             <div>
-              <p className="text-white font-medium">¡Hola, {profile?.full_name?.split(' ')[0]}!</p>
-              <p className="text-gray-400 text-sm mt-1">Soy tu tutor socrático. No te daré respuestas directas, te haré pensar. ¿Qué quieres explorar hoy?</p>
+              <p className="text-white font-medium">Hola, {primerNombre}!</p>
+              <p className="text-gray-400 text-sm mt-1 max-w-xs">
+                Soy tu tutor socrático de Base de Datos II. No te daré respuestas directas — te haré pensar.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-sm text-left">
+              {[
+                '¿Qué es un índice y para qué sirve?',
+                '¿Cuándo uso LEFT JOIN vs INNER JOIN?',
+                '¿Por qué normalizar una base de datos?',
+                '¿Qué diferencia hay entre SQL y NoSQL?',
+              ].map(q => (
+                <button
+                  key={q}
+                  onClick={() => setInput(q)}
+                  className="text-left text-xs text-gray-400 bg-[#1a1a1a] border border-[#2a2a2a] hover:border-orange-500/30 hover:text-orange-300 px-3 py-2.5 rounded-xl transition"
+                >
+                  {q}
+                </button>
+              ))}
             </div>
           </div>
         )}
@@ -242,23 +178,22 @@ export default function Chat() {
               key={msg.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
+              className={`flex gap-2 sm:gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
             >
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                 msg.role === 'user' ? 'bg-orange-500' : 'bg-[#2a2a2a] border border-orange-500/30'
               }`}>
                 {msg.role === 'user'
-                  ? <User className="w-4 h-4 text-white" />
-                  : <Bot className="w-4 h-4 text-orange-400" />
-                }
+                  ? <User className="w-3.5 h-3.5 text-white" />
+                  : <Bot  className="w-3.5 h-3.5 text-orange-400" />}
               </div>
-              <div className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+              <div className={`max-w-[82%] px-3 sm:px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
                 msg.role === 'user'
                   ? 'bg-orange-500 text-white rounded-tr-sm'
                   : 'bg-[#1a1a1a] border border-[#2a2a2a] text-gray-200 rounded-tl-sm'
               }`}>
                 {msg.content}
-                {msg.score_impact > 0 && (
+                {msg.score_impact && msg.score_impact > 0 && (
                   <span className="ml-2 text-xs text-orange-300 opacity-70">+{msg.score_impact}pts</span>
                 )}
               </div>
@@ -267,9 +202,9 @@ export default function Chat() {
         </AnimatePresence>
 
         {sending && (
-          <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#2a2a2a] border border-orange-500/30 flex items-center justify-center">
-              <Bot className="w-4 h-4 text-orange-400" />
+          <div className="flex gap-2 sm:gap-3">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#2a2a2a] border border-orange-500/30 flex items-center justify-center">
+              <Bot className="w-3.5 h-3.5 text-orange-400" />
             </div>
             <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-2">
               <Loader2 className="w-4 h-4 text-orange-400 animate-spin" />
@@ -281,18 +216,18 @@ export default function Chat() {
       </div>
 
       {/* Input */}
-      <div className="flex gap-3">
+      <div className="flex gap-2 flex-shrink-0">
         <input
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
           placeholder="Escribe tu pregunta..."
-          className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-orange-500 transition"
+          className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-xl px-4 py-3 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500 transition"
         />
         <button
           onClick={sendMessage}
           disabled={!input.trim() || sending}
-          className="w-12 h-12 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 rounded-xl flex items-center justify-center transition-all"
+          className="w-11 h-11 sm:w-12 sm:h-12 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 rounded-xl flex items-center justify-center transition-all flex-shrink-0"
         >
           <Send className="w-4 h-4 text-white" />
         </button>
