@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { apiPost } from '../lib/apiClient'
 import { useAuth } from '../context/AuthContext'
 import { MessageSquare, Send, Loader2, Bot, User, Sparkles, Cpu, Trash2 } from 'lucide-react'
 
@@ -19,39 +18,14 @@ export default function Chat() {
   const [input,    setInput]      = useState('')
   const [sending,  setSending]    = useState(false)
   const [score,    setScore]      = useState(50)
-  const directSessionId           = useRef<string | null>(null)
   const bottomRef                 = useRef<HTMLDivElement>(null)
 
   if (!profile) return null
 
   const primerNombre = profile.nombre.split(' ').slice(2, 4).join(' ') || profile.nombre.split(' ')[0]
 
-  const studentProfilePayload = {
-    name:          profile.nombre,
-    career:        'Informática · Base de Datos II',
-    cycle:         5,
-    learning_style:'visual',
-    comfort_level: profile.riesgo === 'VERDE' ? 'alto' : profile.riesgo === 'AMBAR' ? 'medio' : 'bajo',
-    level:         1,
-  }
-
-  // Fallback: llama directo a la API externa si el backend local falla
-  async function callDirectFallback(message: string): Promise<string> {
-    if (!directSessionId.current) {
-      const session = await apiPost<{ sessionId?: string; id?: string }>('/chat/sessions', {
-        studentId: profile.estudiante_id,
-        courseId:  undefined,
-        topic: `Tutor socrático para ${profile.nombre} (Base de Datos II, ciclo 5). En español peruano.`,
-      })
-      directSessionId.current = session.sessionId ?? session.id ?? null
-      if (!directSessionId.current) throw new Error('No sessionId')
-    }
-    const resp = await apiPost<{ content?: string; reply?: string; response?: string }>(
-      `/chat/sessions/${directSessionId.current}/message`,
-      { message, studentId: profile.estudiante_id }
-    )
-    return resp.content ?? resp.reply ?? resp.response ?? ''
-  }
+  const nivelComfort = profile.riesgo === 'VERDE' ? 'alto' : profile.riesgo === 'AMBAR' ? 'medio' : 'bajo'
+  const studentContext = `Nombre: ${profile.nombre} | Carrera: Informática · Base de Datos II | Ciclo: 5 | Nivel comodidad: ${nivelComfort} | Riesgo: ${profile.riesgo ?? 'PENDIENTE'}`
 
   async function sendMessage() {
     if (!input.trim() || sending) return
@@ -66,27 +40,20 @@ export default function Chat() {
 
     try {
       const startTime = Date.now()
-      let reply = ''
 
-      try {
-        const res = await fetch(`${BACKEND_URL}/api/chat`, {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: text,
-            studentProfile: studentProfilePayload,
-            courseId: null,
-            score,
-            history: next.slice(-10).map(m => ({ role: m.role, content: m.content })),
-          }),
-        })
-        if (!res.ok) throw new Error(`backend ${res.status}`)
-        const data = await res.json() as { reply?: string }
-        reply = data.reply ?? ''
-      } catch (backendErr) {
-        console.warn('Backend no disponible, usando API directa:', backendErr)
-        reply = await callDirectFallback(text)
-      }
+      const res = await fetch(`${BACKEND_URL}/api/llm/chat`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          mode:    'student',
+          context: studentContext,
+          history: next.slice(-10).map(m => ({ role: m.role, content: m.content })),
+        }),
+      })
+      if (!res.ok) throw new Error(`Error del servidor [${res.status}]`)
+      const data = await res.json() as { reply?: string }
+      const reply = data.reply ?? ''
 
       const timeBonus = (Date.now() - startTime) / 1000 < 10 ? 5 : 2
       setScore(s => Math.min(100, s + timeBonus))
