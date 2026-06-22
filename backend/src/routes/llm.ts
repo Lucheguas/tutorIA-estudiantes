@@ -13,23 +13,17 @@ import { Router, Request, Response } from 'express'
 
 const router = Router()
 
-const LLM_URL   = process.env.LLM_BASE_URL  ?? 'https://llm.mystic-byte.com'
-const LLM_MODEL = process.env.LLM_MODEL     ?? 'llama3:8b'
-const CF_ID     = process.env.CF_ACCESS_CLIENT_ID  ?? ''
-const CF_SEC    = process.env.CF_ACCESS_CLIENT_SECRET ?? ''
+const LLM_URL   = process.env.LLM_BASE_URL ?? 'https://llm.mystic-byte.com'
+const LLM_MODEL = process.env.LLM_MODEL    ?? 'llama3:8b'
 
-const CF_HEADERS: Record<string, string> = {
-  'Content-Type':            'application/json',
-  'CF-Access-Client-Id':     CF_ID,
-  'CF-Access-Client-Secret': CF_SEC,
-}
+const LLM_HEADERS: Record<string, string> = { 'Content-Type': 'application/json' }
 
 type OllamaMsg = { role: string; content: string }
 
 async function ollamaChat(messages: OllamaMsg[]): Promise<string> {
   const res = await fetch(`${LLM_URL}/api/chat`, {
     method:  'POST',
-    headers: CF_HEADERS,
+    headers: LLM_HEADERS,
     body:    JSON.stringify({ model: LLM_MODEL, messages, stream: false }),
   })
   if (!res.ok) {
