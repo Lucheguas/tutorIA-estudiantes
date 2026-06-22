@@ -30,22 +30,22 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
     ROJO_FALTAS:'text-red-400 bg-red-500/20',
     AMBAR:      'text-yellow-400 bg-yellow-500/20',
     VERDE:      'text-green-400 bg-green-500/20',
-    PENDIENTE:  'text-gray-400 bg-gray-500/20',
-  }[profile?.riesgo ?? 'PENDIENTE'] ?? 'text-gray-400 bg-gray-500/20'
+    PENDIENTE:  'text-stone-500 bg-gray-500/20',
+  }[profile?.riesgo ?? 'PENDIENTE'] ?? 'text-stone-500 bg-gray-500/20'
 
   return (
     <div className="flex flex-col h-full">
       {/* Logo + close on mobile */}
-      <div className="p-5 border-b border-[#222] flex items-center justify-between">
+      <div className="p-5 border-b border-[#e8e4df] flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-orange-500/20 border border-orange-500/40 flex items-center justify-center">
             <BookOpen className="w-5 h-5 text-orange-500" />
           </div>
-          <span className="font-bold text-white text-lg">TutorIA</span>
+          <span className="font-bold text-stone-900 text-lg">TutorIA</span>
         </div>
         <button
           onClick={onClose}
-          className="md:hidden p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-[#1a1a1a] transition"
+          className="md:hidden p-1.5 rounded-lg text-stone-400 hover:text-stone-900 hover:bg-[#f5f3f0] transition"
         >
           <X className="w-4 h-4" />
         </button>
@@ -53,24 +53,24 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
 
       {/* Student info */}
       {profile && (
-        <div className="p-4 border-b border-[#222]">
+        <div className="p-4 border-b border-[#e8e4df]">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-full bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+            <div className="w-11 h-11 rounded-full bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center text-stone-900 font-bold text-sm flex-shrink-0">
               {profile.iniciales}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white text-sm font-medium truncate leading-tight">
+              <p className="text-stone-900 text-sm font-medium truncate leading-tight">
                 {profile.nombre.split(' ').slice(2).join(' ') || profile.nombre.split(' ')[0]}
               </p>
-              <p className="text-gray-500 text-xs truncate">{profile.codigo}@unfv.edu.pe</p>
+              <p className="text-stone-400 text-xs truncate">{profile.codigo}@unfv.edu.pe</p>
             </div>
           </div>
           <div className="mt-3 flex items-center gap-2 flex-wrap">
-            <span className="text-xs bg-[#1a1a1a] text-gray-400 border border-[#333] px-2 py-1 rounded-lg">
+            <span className="text-xs bg-[#f5f3f0] text-stone-500 border border-[#d6d0ca] px-2 py-1 rounded-lg">
               Sección {profile.seccion}
             </span>
             {profile.promedio !== null && (
-              <span className="text-xs bg-[#1a1a1a] text-orange-400 border border-orange-500/30 px-2 py-1 rounded-lg">
+              <span className="text-xs bg-[#f5f3f0] text-orange-400 border border-orange-500/30 px-2 py-1 rounded-lg">
                 Prom. {profile.promedio.toFixed(1)}
               </span>
             )}
@@ -94,7 +94,7 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
               `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
                 isActive
                   ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
-                  : 'text-gray-400 hover:text-white hover:bg-[#1a1a1a]'
+                  : 'text-stone-500 hover:text-stone-900 hover:bg-[#f5f3f0]'
               }`
             }
           >
@@ -105,10 +105,10 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
       </nav>
 
       {/* Logout */}
-      <div className="p-3 border-t border-[#222]">
+      <div className="p-3 border-t border-[#e8e4df]">
         <button
           onClick={() => supabase.auth.signOut()}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-stone-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
         >
           <LogOut className="w-4 h-4" />
           Cerrar sesión
@@ -122,7 +122,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   return (
     <>
       {/* Desktop: always visible */}
-      <aside className="hidden md:flex w-64 bg-[#111] border-r border-[#222] flex-col h-screen sticky top-0 flex-shrink-0">
+      <aside className="hidden md:flex w-64 bg-white border-r border-[#e8e4df] flex-col h-screen sticky top-0 flex-shrink-0">
         <SidebarContent onClose={onClose} />
       </aside>
 
@@ -134,7 +134,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             animate={{ x: 0 }}
             exit={{ x: -280 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="md:hidden fixed inset-y-0 left-0 w-72 bg-[#111] border-r border-[#222] flex flex-col z-30"
+            className="md:hidden fixed inset-y-0 left-0 w-72 bg-white border-r border-[#e8e4df] flex flex-col z-30"
           >
             <SidebarContent onClose={onClose} />
           </motion.aside>

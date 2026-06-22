@@ -19,10 +19,10 @@ function AppRoutes() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center">
+      <div className="min-h-screen bg-[#faf9f7] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-gray-400 text-sm">Cargando...</p>
+          <p className="text-stone-500 text-sm">Cargando...</p>
         </div>
       </div>
     )
@@ -31,16 +31,16 @@ function AppRoutes() {
   if (!user) return <Login />
 
   if (!profile) return (
-    <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center">
+    <div className="min-h-screen bg-[#faf9f7] flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
         <div className="w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-gray-400 text-sm">Cargando tu perfil...</p>
+        <p className="text-stone-500 text-sm">Cargando tu perfil...</p>
       </div>
     </div>
   )
 
   return (
-    <div className="flex min-h-screen bg-[#0f0f0f]">
+    <div className="flex min-h-screen bg-[#faf9f7]">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Mobile backdrop */}
@@ -53,16 +53,16 @@ function AppRoutes() {
 
       <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile header */}
-        <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-[#222] bg-[#111] sticky top-0 z-10">
+        <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-[#e8e4df] bg-white sticky top-0 z-10">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-[#1a1a1a] transition"
+            className="p-2 rounded-xl text-stone-500 hover:text-stone-900 hover:bg-[#f5f3f0] transition"
           >
             <Menu className="w-5 h-5" />
           </button>
-          <span className="font-bold text-white">TutorIA</span>
+          <span className="font-bold text-stone-900">TutorIA</span>
           <div className="ml-auto flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center text-white text-xs font-bold">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center text-stone-900 text-xs font-bold">
               {profile.iniciales}
             </div>
           </div>

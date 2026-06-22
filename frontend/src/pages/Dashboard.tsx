@@ -46,9 +46,9 @@ function StatCard({ icon: Icon, label, value, sub, color = 'orange' }: {
       className={`bg-gradient-to-br ${cls} border rounded-2xl p-4`}
     >
       <Icon className={`w-4 h-4 mb-2 ${cls.split(' ').pop()}`} />
-      <div className="text-2xl font-bold text-white">{value}</div>
-      <div className="text-xs text-gray-400 mt-0.5">{label}</div>
-      {sub && <div className="text-xs text-gray-500 mt-0.5">{sub}</div>}
+      <div className="text-2xl font-bold text-stone-900">{value}</div>
+      <div className="text-xs text-stone-500 mt-0.5">{label}</div>
+      {sub && <div className="text-xs text-stone-400 mt-0.5">{sub}</div>}
     </motion.div>
   )
 }
@@ -58,7 +58,7 @@ const riesgoConfig = {
   ROJO_FALTAS:{ label: 'Riesgo faltas', color: 'text-red-300',    bg: 'bg-red-500/10 border-red-500/40' },
   AMBAR:      { label: 'Atención',      color: 'text-yellow-300', bg: 'bg-yellow-500/10 border-yellow-500/40' },
   VERDE:      { label: 'Al día',        color: 'text-green-300',  bg: 'bg-green-500/10 border-green-500/40' },
-  PENDIENTE:  { label: 'Sin calificar', color: 'text-gray-300',   bg: 'bg-gray-500/10 border-gray-500/40' },
+  PENDIENTE:  { label: 'Sin calificar', color: 'text-stone-600',   bg: 'bg-gray-500/10 border-gray-500/40' },
 }
 
 export default function Dashboard() {
@@ -101,8 +101,8 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white">Hola, {primerNombre}</h1>
-          <p className="text-gray-400 text-sm mt-0.5">Base de Datos II · Sección {profile.seccion}</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-stone-900">Hola, {primerNombre}</h1>
+          <p className="text-stone-500 text-sm mt-0.5">Base de Datos II · Sección {profile.seccion}</p>
         </div>
         <div className={`text-center px-3 py-2 rounded-xl border text-xs font-medium flex-shrink-0 ${riesgo.bg} ${riesgo.color}`}>
           {riesgo.label}
@@ -149,19 +149,19 @@ export default function Dashboard() {
       <div className="glass rounded-2xl p-4 sm:p-5">
         <div className="flex items-center gap-2 mb-3">
           <ShieldAlert className="w-5 h-5 text-orange-500" />
-          <span className="text-white font-semibold text-sm">Evaluación de riesgo IA</span>
-          <span className="text-xs text-gray-500 ml-auto">por Llama 3</span>
+          <span className="text-stone-900 font-semibold text-sm">Evaluación de riesgo IA</span>
+          <span className="text-xs text-stone-400 ml-auto">por Llama 3</span>
         </div>
 
         {riskLoading && (
-          <div className="flex items-center gap-2 text-gray-400 text-sm">
+          <div className="flex items-center gap-2 text-stone-500 text-sm">
             <Loader2 className="w-4 h-4 animate-spin text-orange-500" />
             Analizando tu perfil académico...
           </div>
         )}
 
         {!riskLoading && !resolvedLevel && (
-          <p className="text-gray-500 text-sm">Análisis no disponible en este momento.</p>
+          <p className="text-stone-400 text-sm">Análisis no disponible en este momento.</p>
         )}
 
         {!riskLoading && resolvedLevel && (
@@ -176,7 +176,7 @@ export default function Dashboard() {
 
       {/* Notas */}
       <div className="glass rounded-2xl p-4 sm:p-5">
-        <h3 className="text-white font-semibold mb-4 flex items-center gap-2 text-sm">
+        <h3 className="text-stone-900 font-semibold mb-4 flex items-center gap-2 text-sm">
           <Award className="w-4 h-4 text-orange-500" /> Notas · Base de Datos II
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -186,11 +186,11 @@ export default function Dashboard() {
             { label: 'Práctica', val: profile.practica },
             { label: 'Promedio', val: profile.promedio },
           ].map(({ label, val }) => {
-            const color = val === null ? 'text-gray-500' : val >= 14 ? 'text-green-400' : val >= 11 ? 'text-yellow-400' : 'text-red-400'
+            const color = val === null ? 'text-stone-400' : val >= 14 ? 'text-green-400' : val >= 11 ? 'text-yellow-400' : 'text-red-400'
             return (
-              <div key={label} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-3 text-center">
+              <div key={label} className="bg-[#f5f3f0] border border-[#e8e4df] rounded-xl p-3 text-center">
                 <div className={`text-xl font-bold ${color}`}>{val !== null ? val : '—'}</div>
-                <div className="text-xs text-gray-500 mt-0.5">{label}</div>
+                <div className="text-xs text-stone-400 mt-0.5">{label}</div>
               </div>
             )
           })}
@@ -199,7 +199,7 @@ export default function Dashboard() {
 
       {/* Attendance grid */}
       <div className="glass rounded-2xl p-4 sm:p-5">
-        <h3 className="text-white font-semibold mb-4 flex items-center gap-2 text-sm">
+        <h3 className="text-stone-900 font-semibold mb-4 flex items-center gap-2 text-sm">
           <Calendar className="w-4 h-4 text-orange-500" /> Registro de sesiones
         </h3>
         <div className="grid grid-cols-8 sm:grid-cols-16 gap-1.5 sm:gap-2">
@@ -213,7 +213,7 @@ export default function Dashboard() {
                 className={`aspect-square rounded-lg flex items-center justify-center text-[10px] font-medium border ${
                   state === 'present' ? 'bg-green-500/20 border-green-500/40 text-green-400' :
                   state === 'absent'  ? 'bg-red-500/20   border-red-500/40   text-red-400' :
-                  'bg-[#1a1a1a] border-[#2a2a2a] text-gray-600'
+                  'bg-[#f5f3f0] border-[#e8e4df] text-stone-400'
                 }`}
               >
                 {s}
@@ -221,16 +221,16 @@ export default function Dashboard() {
             )
           })}
         </div>
-        <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+        <div className="flex items-center gap-4 mt-3 text-xs text-stone-400">
           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-green-500/50" /> Asistió</span>
           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-red-500/50"   /> Faltó</span>
-          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-[#2a2a2a]"   /> Sin registro</span>
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-[#e8e4df]"   /> Sin registro</span>
         </div>
       </div>
 
       {/* Datos personales */}
       <div className="glass rounded-2xl p-4 sm:p-5">
-        <h3 className="text-white font-semibold mb-4 flex items-center gap-2 text-sm">
+        <h3 className="text-stone-900 font-semibold mb-4 flex items-center gap-2 text-sm">
           <User className="w-4 h-4 text-orange-500" /> Datos personales
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
@@ -243,8 +243,8 @@ export default function Dashboard() {
             { label: 'Curso',   value: 'Base de Datos II' },
           ].map(({ label, value }) => (
             <div key={label}>
-              <p className="text-gray-500 text-xs">{label}</p>
-              <p className="text-white mt-0.5 break-words">{value}</p>
+              <p className="text-stone-400 text-xs">{label}</p>
+              <p className="text-stone-900 mt-0.5 break-words">{value}</p>
             </div>
           ))}
         </div>

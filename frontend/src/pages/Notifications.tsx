@@ -70,15 +70,15 @@ export default function Notifications() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-stone-900 flex items-center gap-2">
             <Bell className="w-6 h-6 text-orange-500" /> Notificaciones
           </h1>
-          <p className="text-gray-400 mt-1">{totalUnread} sin leer</p>
+          <p className="text-stone-500 mt-1">{totalUnread} sin leer</p>
         </div>
         {supabaseUnread > 0 && (
           <button
             onClick={markAllRead}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm text-gray-400 hover:text-white bg-[#1a1a1a] border border-[#333] transition"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm text-stone-500 hover:text-stone-900 bg-[#f5f3f0] border border-[#d6d0ca] transition"
           >
             <CheckCheck className="w-4 h-4" /> Marcar todas leídas
           </button>
@@ -88,8 +88,8 @@ export default function Notifications() {
       <div className="space-y-3">
         {allNotifications.length === 0 && (
           <div className="glass rounded-2xl p-12 text-center">
-            <Bell className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400">No tienes notificaciones aún.</p>
+            <Bell className="w-12 h-12 text-stone-400 mx-auto mb-4" />
+            <p className="text-stone-500">No tienes notificaciones aún.</p>
           </div>
         )}
 
@@ -107,7 +107,7 @@ export default function Notifications() {
               className={`border rounded-2xl p-4 flex items-start gap-3 transition-all ${
                 isSupabase ? 'cursor-pointer' : 'cursor-default'
               } ${
-                notif.read ? 'bg-[#111] border-[#222] opacity-60' : `${bg}`
+                notif.read ? 'bg-white border-[#e8e4df] opacity-60' : `${bg}`
               }`}
             >
               <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center flex-shrink-0`}>
@@ -115,18 +115,18 @@ export default function Notifications() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-white font-medium text-sm">{notif.title}</p>
+                  <p className="text-stone-900 font-medium text-sm">{notif.title}</p>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     {!notif.read && (
                       <span className="w-2 h-2 rounded-full bg-orange-500 mt-1" />
                     )}
                     {!isSupabase && (
-                      <span className="text-xs text-gray-600 bg-[#1a1a1a] border border-[#2a2a2a] px-1.5 py-0.5 rounded-md">IA</span>
+                      <span className="text-xs text-stone-400 bg-[#f5f3f0] border border-[#e8e4df] px-1.5 py-0.5 rounded-md">IA</span>
                     )}
                   </div>
                 </div>
-                <p className="text-gray-400 text-sm mt-0.5">{notif.message}</p>
-                <p className="text-gray-600 text-xs mt-2">
+                <p className="text-stone-500 text-sm mt-0.5">{notif.message}</p>
+                <p className="text-stone-400 text-xs mt-2">
                   {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true, locale: es })}
                 </p>
               </div>

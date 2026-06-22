@@ -151,17 +151,17 @@ function PomodoroTimer() {
   const secs = (seconds % 60).toString().padStart(2, '0')
 
   return (
-    <div className="bg-[#111] border border-red-500/20 rounded-2xl p-6 mt-4">
-      <p className="text-sm text-gray-500 text-center mb-4">{phase === 'work' ? '🍅 Tiempo de trabajo' : '☕ Tiempo de descanso'}</p>
-      <div className="text-5xl font-mono font-bold text-center text-white mb-6">
+    <div className="bg-white border border-red-500/20 rounded-2xl p-6 mt-4">
+      <p className="text-sm text-stone-400 text-center mb-4">{phase === 'work' ? '🍅 Tiempo de trabajo' : '☕ Tiempo de descanso'}</p>
+      <div className="text-5xl font-mono font-bold text-center text-stone-900 mb-6">
         {mins}:{secs}
       </div>
       <div className="flex justify-center gap-3">
-        <button onClick={toggle} className="flex items-center gap-2 px-5 py-2.5 bg-red-500 hover:bg-red-600 rounded-xl text-white text-sm font-medium transition">
+        <button onClick={toggle} className="flex items-center gap-2 px-5 py-2.5 bg-red-500 hover:bg-red-600 rounded-xl text-stone-900 text-sm font-medium transition">
           {running ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
           {running ? 'Pausar' : 'Iniciar'}
         </button>
-        <button onClick={reset} className="flex items-center gap-2 px-4 py-2.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] rounded-xl text-gray-400 text-sm transition">
+        <button onClick={reset} className="flex items-center gap-2 px-4 py-2.5 bg-[#f5f3f0] hover:bg-[#f0ece8] border border-[#d6d0ca] rounded-xl text-stone-500 text-sm transition">
           <RotateCcw className="w-4 h-4" />
         </button>
       </div>
@@ -205,7 +205,7 @@ function AiRecommendationCard() {
     return (
       <div className="glass rounded-2xl p-5 flex items-center gap-3">
         <Loader2 className="w-5 h-5 text-orange-400 animate-spin flex-shrink-0" />
-        <span className="text-gray-400 text-sm">Llama 3 analizando tu perfil...</span>
+        <span className="text-stone-500 text-sm">Llama 3 analizando tu perfil...</span>
       </div>
     )
   }
@@ -223,11 +223,11 @@ function AiRecommendationCard() {
     >
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="w-4 h-4 text-orange-400" />
-        <span className="text-white font-semibold text-sm">Recomendación de Llama 3 para ti</span>
+        <span className="text-stone-900 font-semibold text-sm">Recomendación de Llama 3 para ti</span>
       </div>
       <p className="text-orange-300 font-medium">{methodName}</p>
-      {reason && <p className="text-gray-400 text-sm mt-1">{reason}</p>}
-      <p className="text-xs text-gray-600 mt-2">Basado en tu estilo de aprendizaje: {profile?.learning_style}</p>
+      {reason && <p className="text-stone-500 text-sm mt-1">{reason}</p>}
+      <p className="text-xs text-stone-400 mt-2">Basado en tu estilo de aprendizaje: {profile?.learning_style}</p>
     </motion.div>
   )
 }
@@ -238,10 +238,10 @@ export default function StudyMethods() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+        <h1 className="text-2xl font-bold text-stone-900 flex items-center gap-2">
           <Brain className="w-6 h-6 text-orange-500" /> Métodos de Estudio
         </h1>
-        <p className="text-gray-400 mt-1">Técnicas probadas para aprender de forma eficiente</p>
+        <p className="text-stone-500 mt-1">Técnicas probadas para aprender de forma eficiente</p>
       </div>
 
       {/* AI Recommendation from Llama */}
@@ -269,11 +269,11 @@ export default function StudyMethods() {
                     <Icon className={`w-5 h-5 ${method.accent}`} />
                   </div>
                   <div>
-                    <h3 className="text-white font-semibold">{method.name}</h3>
+                    <h3 className="text-stone-900 font-semibold">{method.name}</h3>
                     <p className={`text-sm ${method.accent} opacity-80 mt-0.5`}>{method.tagline}</p>
                   </div>
                 </div>
-                <ChevronDown className={`w-4 h-4 text-gray-500 flex-shrink-0 mt-1 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-4 h-4 text-stone-400 flex-shrink-0 mt-1 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
               </button>
 
               <AnimatePresence>
@@ -285,13 +285,13 @@ export default function StudyMethods() {
                     className="overflow-hidden"
                   >
                     <div className="px-5 pb-5 space-y-4 border-t border-white/5">
-                      <p className="text-gray-300 text-sm pt-4">{method.description}</p>
+                      <p className="text-stone-600 text-sm pt-4">{method.description}</p>
 
                       <div>
                         <h4 className={`text-xs font-semibold uppercase tracking-wider ${method.accent} mb-2`}>Pasos</h4>
                         <ol className="space-y-1.5">
                           {method.steps.map((step, i) => (
-                            <li key={i} className="flex items-start gap-2.5 text-sm text-gray-300">
+                            <li key={i} className="flex items-start gap-2.5 text-sm text-stone-600">
                               <span className={`w-5 h-5 rounded-full bg-black/30 flex items-center justify-center text-xs font-bold flex-shrink-0 ${method.accent}`}>
                                 {i + 1}
                               </span>
@@ -305,7 +305,7 @@ export default function StudyMethods() {
                         <h4 className={`text-xs font-semibold uppercase tracking-wider ${method.accent} mb-2`}>Beneficios</h4>
                         <div className="flex flex-wrap gap-2">
                           {method.benefits.map(b => (
-                            <span key={b} className="text-xs bg-black/20 text-gray-300 px-2.5 py-1 rounded-lg">{b}</span>
+                            <span key={b} className="text-xs bg-black/20 text-stone-600 px-2.5 py-1 rounded-lg">{b}</span>
                           ))}
                         </div>
                       </div>

@@ -48,21 +48,21 @@ export default function Resources() {
   return (
     <div className="p-4 sm:p-6 space-y-5">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold text-stone-900 flex items-center gap-2">
           <FolderOpen className="w-5 h-5 sm:w-6 sm:h-6 text-orange-500" /> Recursos
         </h1>
-        <p className="text-gray-400 text-sm mt-1">Material de estudio · Base de Datos II</p>
+        <p className="text-stone-500 text-sm mt-1">Material de estudio · Base de Datos II</p>
       </div>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Buscar recurso o semana..."
-            className="w-full bg-[#1a1a1a] border border-[#333] rounded-xl pl-10 pr-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500 transition"
+            className="w-full bg-[#f5f3f0] border border-[#d6d0ca] rounded-xl pl-10 pr-4 py-2.5 text-stone-900 text-sm placeholder-stone-400 focus:outline-none focus:border-orange-500 transition"
           />
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -72,8 +72,8 @@ export default function Resources() {
               onClick={() => setFilter(t)}
               className={`px-3 py-2 rounded-xl text-xs font-medium transition-all border ${
                 filter === t
-                  ? 'bg-orange-500 text-white border-orange-500'
-                  : 'bg-[#1a1a1a] text-gray-400 border-[#333] hover:text-white'
+                  ? 'bg-orange-500 text-stone-900 border-orange-500'
+                  : 'bg-[#f5f3f0] text-stone-500 border-[#d6d0ca] hover:text-stone-900'
               }`}
             >
               {t === 'all' ? 'Todo' : typeConfig[t].label}
@@ -86,8 +86,8 @@ export default function Resources() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {visible.length === 0 && (
           <div className="sm:col-span-2 glass rounded-2xl p-10 text-center">
-            <FolderOpen className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-400 text-sm">No se encontraron recursos.</p>
+            <FolderOpen className="w-10 h-10 text-stone-400 mx-auto mb-3" />
+            <p className="text-stone-500 text-sm">No se encontraron recursos.</p>
           </div>
         )}
 
@@ -110,15 +110,15 @@ export default function Resources() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
-                    <h4 className="text-white text-sm font-medium group-hover:text-orange-300 transition leading-tight">
+                    <h4 className="text-stone-900 text-sm font-medium group-hover:text-orange-300 transition leading-tight">
                       {r.title}
                     </h4>
-                    <ExternalLink className="w-3.5 h-3.5 text-gray-600 group-hover:text-orange-400 flex-shrink-0 mt-0.5 transition" />
+                    <ExternalLink className="w-3.5 h-3.5 text-stone-400 group-hover:text-orange-400 flex-shrink-0 mt-0.5 transition" />
                   </div>
-                  <p className="text-gray-500 text-xs mt-1 line-clamp-2">{r.desc}</p>
+                  <p className="text-stone-400 text-xs mt-1 line-clamp-2">{r.desc}</p>
                   <div className="flex items-center gap-2 mt-2">
                     <span className={`text-xs px-2 py-0.5 rounded-md border ${color}`}>{label}</span>
-                    <span className="text-xs text-gray-600">Semana {r.week}</span>
+                    <span className="text-xs text-stone-400">Semana {r.week}</span>
                   </div>
                 </div>
               </div>
